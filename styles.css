@@ -1,0 +1,147 @@
+/* 基础与主题变量 */
+:root {
+  --bg: #fff;
+  --text: #1f2328;
+  --muted: #6b7280;
+  --surface: #f7f7f8;
+  --border: #e5e7eb;
+  --primary: #b30000; /* 深红（年节） */
+  --accent: #d4af37;  /* 金色（灯火） */
+  --shadow: 0 10px 30px rgba(0,0,0,.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --text: #e5e7eb;
+    --muted: #9aa1ac;
+    --surface: #171a21;
+    --border: #23262e;
+    --shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+}
+
+/* 手动切换主题 */
+[data-theme="dark"] {
+  --bg: #0f1115;
+  --text: #e5e7eb;
+  --muted: #9aa1ac;
+  --surface: #171a21;
+  --border: #23262e;
+  --shadow: 0 10px 30px rgba(0,0,0,.5);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.skip-link {
+  position: absolute; left: -9999px; top: auto;
+  background: var(--primary); color: #fff; padding: 8px 10px;
+}
+.skip-link:focus { left: 8px; top: 8px; z-index: 1000; }
+
+/* 头部与导航 */
+.site-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(255,255,255,.7);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+@media (prefers-color-scheme: dark) {
+  .site-header { background: rgba(15,17,21,.6); }
+}
+.header-inner { display: flex; align-items: center; gap: 16px; justify-content: space-between; height: 64px; }
+.brand { display: flex; flex-direction: column; line-height: 1; font-weight: 700; color: var(--text); }
+.brand-en { font-size: 12px; color: var(--muted); }
+
+.site-nav ul { display: flex; gap: 16px; list-style: none; margin: 0; padding: 0; }
+.site-nav a { color: var(--text); padding: 6px 8px; border-radius: 6px; }
+.site-nav a:hover { background: var(--surface); text-decoration: none; }
+
+.nav-toggle { display: none; }
+@media (max-width: 768px) {
+  .nav-toggle { display: inline-flex; align-items: center; height: 36px; padding: 0 10px; }
+  .site-nav ul { position: absolute; top: 64px; right: 0; left: 0; background: var(--bg); border-bottom: 1px solid var(--border); flex-direction: column; gap: 0; display: none; }
+  .site-nav.open ul { display: flex; }
+  .site-nav li { border-top: 1px solid var(--border); }
+  .site-nav a { display: block; padding: 12px 16px; }
+}
+
+.theme-toggle { height: 36px; padding: 0 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px; }
+
+/* 英雄区 */
+.hero { padding: 88px 0 56px; background: radial-gradient(800px 400px at 20% 0%, rgba(179,0,0,.12), transparent 60%), radial-gradient(800px 400px at 85% 10%, rgba(212,175,55,.14), transparent 50%); }
+.hero-inner { text-align: center; }
+.hero h1 { font-size: clamp(28px, 5vw, 44px); margin: 0 0 12px; letter-spacing: .02em; }
+.subtitle { color: var(--muted); max-width: 720px; margin: 0 auto 20px; }
+.btn { display: inline-block; padding: 10px 16px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; margin-right: 8px; }
+.btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn:hover { filter: brightness(1.02); text-decoration: none; }
+
+/* 通用分节 */
+.section { padding: 56px 0; }
+.section--alt { background: var(--surface); }
+.section h2 { font-size: 28px; margin: 0 0 12px; }
+.muted { color: var(--muted); }
+
+/* 网格布局 */
+.grid.two { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: center; }
+@media (max-width: 900px) { .grid.two { grid-template-columns: 1fr; } }
+
+.media img { border-radius: 12px; box-shadow: var(--shadow); }
+
+/* 关键点列表 */
+.keypoints { padding-left: 18px; }
+.keypoints li { margin-bottom: 6px; }
+
+/* 时间线 */
+.timeline { list-style: none; margin: 0; padding: 0; border-left: 3px solid var(--border); }
+.tl-item { position: relative; margin: 0 0 20px 18px; padding-left: 16px; opacity: .25; transform: translateY(8px); transition: all .4s ease; }
+.tl-item::before { content: attr(data-year); position: absolute; left: -86px; top: 0; color: var(--muted); font-size: 12px; }
+.tl-item::after { content: ""; position: absolute; left: -22px; top: 6px; width: 10px; height: 10px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 0 3px var(--bg); }
+.tl-item.visible { opacity: 1; transform: translateY(0); }
+@media (max-width: 680px) { .tl-item::before { position: static; display: inline-block; margin-right: 8px; } }
+
+/* 标签与面板 */
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.tab { padding: 8px 12px; border: 1px solid var(--border); background: var(--bg); border-radius: 10px; cursor: pointer; }
+.tab[aria-selected="true"] { border-color: var(--primary); color: var(--primary); }
+.tabpanel { border: 1px dashed var(--border); padding: 16px; border-radius: 12px; background: var(--bg); }
+.tabpanel + .tabpanel { margin-top: 12px; }
+
+/* 图集 */
+.gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.gallery a { display: block; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
+.gallery img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
+.gallery a:hover img { transform: scale(1.04); }
+@media (max-width: 900px) { .gallery { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .gallery { grid-template-columns: 1fr; } }
+
+/* 页脚 */
+.site-footer { border-top: 1px solid var(--border); background: var(--surface); }
+.footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 0; }
+.back-to-top { font-size: 14px; }
+
+/* 灯箱 */
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: none; align-items: center; justify-content: center; padding: 24px; z-index: 100; }
+.lightbox.open { display: flex; }
+.lightbox-img { max-width: 90vw; max-height: 80vh; border-radius: 12px; box-shadow: var(--shadow); }
+.lightbox-close { position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; border-radius: 999px; border: none; background: #fff; color: #111; font-size: 20px; cursor: pointer; }
+

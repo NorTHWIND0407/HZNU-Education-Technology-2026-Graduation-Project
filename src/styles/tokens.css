@@ -1,0 +1,126 @@
+/* Traditional Chinese Cultural Design Tokens */
+:root {
+  /* Color Palette - Inspired by Traditional Chinese Colors */
+  --color-bg: #faf8f3; /* 宣纸白 */
+  --color-fg: #2c2416; /* 墨色 */
+  --color-brand: #c8383d; /* 中国红 */
+  --color-gold: #d4a574; /* 金色 */
+  --color-ink: #1a1a1a; /* 深墨 */
+  --color-jade: #5a9e7e; /* 玉色 */
+  --color-amber: #f5d456; /* 琥珀黄 */
+
+  /* Semantic Colors */
+  --color-primary: var(--color-brand);
+  --color-secondary: var(--color-gold);
+  --color-accent: var(--color-jade);
+
+  /* Background Layers */
+  --bg-base: #faf8f3;
+  --bg-elevated: #ffffff;
+  --bg-overlay: rgba(250, 248, 243, 0.95);
+
+  /* Text Colors */
+  --text-primary: #2c2416;
+  --text-secondary: #6b5d49;
+  --text-tertiary: #9b8b76;
+  --text-inverse: #ffffff;
+
+  /* Border Colors */
+  --border-light: rgba(212, 165, 116, 0.2);
+  --border-medium: rgba(212, 165, 116, 0.4);
+  --border-heavy: rgba(200, 56, 61, 0.3);
+
+  /* Shadow - Traditional layered effect */
+  --shadow-sm: 0 2px 4px rgba(44, 36, 22, 0.08);
+  --shadow-md: 0 4px 8px rgba(44, 36, 22, 0.12), 0 2px 4px rgba(44, 36, 22, 0.08);
+  --shadow-lg: 0 8px 16px rgba(44, 36, 22, 0.16), 0 4px 8px rgba(44, 36, 22, 0.12);
+  --shadow-xl: 0 12px 24px rgba(44, 36, 22, 0.20), 0 8px 16px rgba(44, 36, 22, 0.16);
+
+  /* Border Radius - Traditional architecture inspired */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Spacing Scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-serif: "Noto Serif SC", "Source Han Serif SC", Georgia, serif;
+  --font-mono: "SF Mono", "Cascadia Code", Consolas, monospace;
+}
+
+.dark {
+  /* Dark Mode - Night ink wash painting style */
+  --color-bg: #1a1410;
+  --color-fg: #e8e3d8;
+  --color-brand: #e85a5f;
+  --color-gold: #d4a574;
+  --color-ink: #f5f5f5;
+  --color-jade: #6eb89a;
+  --color-amber: #f5d456;
+
+  --bg-base: #1a1410;
+  --bg-elevated: #241f1a;
+  --bg-overlay: rgba(26, 20, 16, 0.95);
+
+  --text-primary: #e8e3d8;
+  --text-secondary: #c4baa8;
+  --text-tertiary: #9b8b76;
+  --text-inverse: #1a1410;
+
+  --border-light: rgba(212, 165, 116, 0.15);
+  --border-medium: rgba(212, 165, 116, 0.3);
+  --border-heavy: rgba(232, 90, 95, 0.4);
+
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Traditional decorative patterns */
+.pattern-paper {
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(212, 165, 116, 0.03) 1px, rgba(212, 165, 116, 0.03) 2px);
+}
+
+.pattern-border {
+  position: relative;
+}
+
+.pattern-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--border-medium);
+  border-image: repeating-linear-gradient(
+    45deg,
+    var(--color-gold),
+    var(--color-gold) 10px,
+    transparent 10px,
+    transparent 20px
+  ) 1;
+  pointer-events: none;
+}
+
+/* Traditional seal stamp effect */
+.stamp {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: var(--color-brand);
+  color: white;
+  border: 2px solid currentColor;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  box-shadow: var(--shadow-md);
+}
+

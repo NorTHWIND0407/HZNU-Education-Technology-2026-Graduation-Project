@@ -1,0 +1,173 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Traditional Chinese typography */
+  body {
+    @apply bg-paper dark:bg-paper-dark text-ink-800 dark:text-gray-100;
+    @apply font-sans antialiased;
+    letter-spacing: 0.02em;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-bold;
+    letter-spacing: 0.05em;
+  }
+
+  h1 { @apply text-3xl md:text-4xl lg:text-5xl; }
+  h2 { @apply text-2xl md:text-3xl lg:text-4xl; }
+  h3 { @apply text-xl md:text-2xl lg:text-3xl; }
+}
+
+@layer components {
+  /* Container with traditional spacing */
+  .container-narrow {
+    @apply max-w-7xl mx-auto px-4 md:px-6 lg:px-8;
+  }
+
+  /* Card with traditional paper texture */
+  .card {
+    @apply rounded-lg border-2 border-gold-200 dark:border-gold-800/30
+           bg-white dark:bg-ink-900
+           shadow-traditional dark:shadow-none
+           backdrop-blur-sm
+           transition-all duration-300
+           hover:shadow-traditional-lg hover:border-gold-300 dark:hover:border-gold-700;
+  }
+
+  /* Traditional style button */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2
+           rounded-md px-4 py-2.5 text-sm font-semibold
+           border-2 border-transparent
+           bg-brand text-white
+           shadow-md
+           transition-all duration-200
+           hover:bg-brand-600 hover:shadow-lg hover:scale-105
+           active:scale-95
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-400
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+  }
+
+  .btn-secondary {
+    @apply btn bg-gold-400 text-ink-900 border-gold-500
+           hover:bg-gold-500 focus:ring-gold-400;
+  }
+
+  .btn-outline {
+    @apply btn bg-transparent text-brand border-brand-500
+           hover:bg-brand-50 dark:hover:bg-brand-900/20;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent border-transparent shadow-none
+           text-ink-700 dark:text-gray-300
+           hover:bg-gold-100 dark:hover:bg-gold-900/20;
+  }
+
+  /* Traditional decorative elements */
+  .divider-gold {
+    @apply h-px bg-gradient-to-r from-transparent via-gold-400 to-transparent my-6;
+  }
+
+  .section-title {
+    @apply text-2xl md:text-3xl font-serif font-bold text-ink-900 dark:text-gray-100
+           mb-6 pb-3 border-b-2 border-gold-300 dark:border-gold-700
+           relative;
+  }
+
+  .section-title::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-20 h-0.5 bg-brand-500;
+  }
+
+  /* Badge with traditional seal style */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-1 rounded-sm
+           text-xs font-bold uppercase tracking-wider
+           bg-brand-500 text-white border-2 border-brand-600
+           shadow-sm;
+  }
+
+  .badge-gold {
+    @apply badge bg-gold-400 text-ink-900 border-gold-600;
+  }
+
+  .badge-jade {
+    @apply badge bg-jade-400 text-white border-jade-600;
+  }
+
+  /* Input with traditional style */
+  .input {
+    @apply w-full px-4 py-2.5 rounded-md
+           border-2 border-gold-200 dark:border-gold-800
+           bg-white dark:bg-ink-900
+           text-ink-900 dark:text-gray-100
+           placeholder:text-ink-400 dark:placeholder:text-gray-500
+           focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20
+           transition-colors duration-200;
+  }
+
+  /* Traditional grid cards */
+  .card-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  /* Lantern glow effect */
+  .lantern-glow {
+    @apply relative;
+  }
+
+  .lantern-glow::before {
+    content: '';
+    @apply absolute inset-0 rounded-lg blur-xl opacity-50;
+    background: radial-gradient(circle, var(--color-brand), transparent 70%);
+    z-index: -1;
+  }
+}
+
+@layer utilities {
+  /* Text gradients */
+  .text-gradient-brand {
+    @apply bg-gradient-to-r from-brand-500 to-gold-500 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent;
+  }
+
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Traditional paper texture */
+  .texture-paper {
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(212, 165, 116, 0.03) 2px, rgba(212, 165, 116, 0.03) 4px);
+  }
+}
+

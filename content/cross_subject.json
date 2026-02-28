@@ -1,0 +1,21 @@
+[
+  {
+    "subject": "语文", // TODO: 学科名称
+    "points": [
+      { "id": "p1", "title": "TODO 成语/诗句", "desc": "TODO 关联说明" }
+    ]
+  },
+  {
+    "subject": "美术",
+    "points": [ { "id": "p2", "title": "TODO 造型色彩", "desc": "TODO 纹样设计" } ]
+  },
+  {
+    "subject": "音乐",
+    "points": [ { "id": "p3", "title": "TODO 节奏训练", "desc": "TODO 口令与节拍" } ]
+  },
+  {
+    "subject": "科学",
+    "points": [ { "id": "p4", "title": "TODO 力学原理", "desc": "TODO 平衡与旋转" } ]
+  }
+]
+
