@@ -1,5 +1,26 @@
-venv/
-__pycache__/
-*.pyc
+# dependencies
+node_modules/
+server/node_modules/
+
+# build artifacts
+dist/
+coverage/
+*.tsbuildinfo
+
+# env files
+.env
+.env.local
+.env.*.local
+server/.env
+
+# logs
 *.log
-*.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# os / editor
+.DS_Store
+.vscode/
+.idea/
