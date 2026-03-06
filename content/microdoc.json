@@ -1,0 +1,21 @@
+[
+  {
+    "id": "clip-01",
+    "title": "TODO 微纪录片片段 1",
+    "poster": "/images/placeholder_microdoc.jpg",
+    "sources": [
+      { "label": "480p", "src": "/videos/placeholder_480p.mp4" },
+      { "label": "720p", "src": "/videos/placeholder_720p.mp4" },
+      { "label": "1080p", "src": "/videos/placeholder_1080p.mp4" }
+    ]
+  },
+  {
+    "id": "clip-02",
+    "title": "TODO 微纪录片片段 2",
+    "poster": "/images/placeholder_microdoc.jpg",
+    "sources": [
+      { "label": "480p", "src": "/videos/placeholder_480p.mp4" },
+      { "label": "720p", "src": "/videos/placeholder_720p.mp4" }
+    ]
+  }
+]

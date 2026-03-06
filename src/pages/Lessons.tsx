@@ -2,8 +2,7 @@ import React from 'react'
 import { fetchJSONC } from '../lib/api'
 import StepAnnotator from '../components/StepAnnotator'
 import { useAppStore } from '../lib/store'
-
-type Lesson = { id: string; title: string; thumb: string; clip: string; beats: number; steps: string[] }
+import type { Lesson } from '../types/content'
 
 export default function Lessons() {
   const [items, setItems] = React.useState<Lesson[]>([])
@@ -36,4 +35,3 @@ export default function Lessons() {
     </div>
   )
 }
-

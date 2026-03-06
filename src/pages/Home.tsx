@@ -4,8 +4,7 @@ import { t } from '../lib/i18n'
 import Timeline from '../components/Timeline'
 import { fetchJSONC } from '../lib/api'
 import React from 'react'
-
-type Entry = { id: string; title: string; desc: string; media?: string; ts?: string }
+import type { Entry } from '../types/content'
 
 export default function Home() {
   const lang = useAppStore(s => s.lang)

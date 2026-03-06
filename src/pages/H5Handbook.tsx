@@ -1,17 +1,32 @@
 import React from 'react'
 import { fetchJSONC } from '../lib/api'
-
-type Chapter = { id: string; title: string; svg?: string; audio?: string; quiz?: { q: string; a: string[]; correct: number }[] }
+import type { Chapter } from '../types/content'
 
 export default function H5Handbook() {
   const [chapters, setChapters] = React.useState<Chapter[]>([])
   const [idx, setIdx] = React.useState(0)
-  const [score, setScore] = React.useState(0)
+  const [answers, setAnswers] = React.useState<Record<string, number>>({})
   React.useEffect(() => { fetchJSONC<Chapter[]>('/content/handbook.json').then(setChapters) }, [])
   const cur = chapters[idx]
 
-  function onAnswer(i: number, correct: number) {
-    if (i === correct) setScore(s => s + 1)
+  const score = React.useMemo(() => {
+    return chapters.reduce((total, chapter) => {
+      const quiz = chapter.quiz ?? []
+      let chapterScore = 0
+      quiz.forEach((q, qi) => {
+        const key = `${chapter.id}-${qi}`
+        if (answers[key] === q.correct) chapterScore += 1
+      })
+      return total + chapterScore
+    }, 0)
+  }, [answers, chapters])
+
+  function onAnswer(chapterId: string, qi: number, selected: number) {
+    const key = `${chapterId}-${qi}`
+    setAnswers(prev => {
+      if (key in prev) return prev
+      return { ...prev, [key]: selected }
+    })
   }
 
   return (
@@ -33,9 +48,28 @@ export default function H5Handbook() {
               <div key={qi} className="p-3 border rounded">
                 <p className="font-medium">{q.q}</p>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  {q.a.map((opt, i) => (
-                    <button key={i} className="btn" onClick={() => onAnswer(i, q.correct)}>{opt}</button>
-                  ))}
+                  {q.a.map((opt, i) => {
+                    const answerKey = `${cur.id}-${qi}`
+                    const selected = answers[answerKey]
+                    const answered = selected !== undefined
+                    const isSelected = selected === i
+                    const isCorrect = i === q.correct
+
+                    return (
+                      <button
+                        key={i}
+                        className={`btn ${answered ? '!cursor-default !opacity-100' : ''} ${
+                          answered && isSelected && isCorrect ? '!bg-jade-500 !border-jade-600' : ''
+                        } ${
+                          answered && isSelected && !isCorrect ? '!bg-brand-500 !border-brand-600' : ''
+                        }`}
+                        disabled={answered}
+                        onClick={() => onAnswer(cur.id, qi, i)}
+                      >
+                        {opt}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -52,4 +86,3 @@ export default function H5Handbook() {
     </div>
   )
 }
-

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAppStore } from '../lib/store'
 import { t } from '../lib/i18n'
 
@@ -27,19 +28,19 @@ export default function Footer() {
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="/about-linping-lantern" className="text-ink-600 dark:text-gray-400 hover:text-brand transition-colors">
+                <Link to="/about-linping-lantern" className="text-ink-600 dark:text-gray-400 hover:text-brand transition-colors">
                   {t('nav_about', lang)}
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/lessons" className="text-ink-600 dark:text-gray-400 hover:text-brand transition-colors">
+                <Link to="/lessons" className="text-ink-600 dark:text-gray-400 hover:text-brand transition-colors">
                   {t('nav_lessons', lang)}
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/ai-qa" className="text-ink-600 dark:text-gray-400 hover:text-brand transition-colors">
+                <Link to="/ai-qa" className="text-ink-600 dark:text-gray-400 hover:text-brand transition-colors">
                   {t('nav_aiqa', lang)}
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -94,4 +95,3 @@ export default function Footer() {
     </footer>
   )
 }
-

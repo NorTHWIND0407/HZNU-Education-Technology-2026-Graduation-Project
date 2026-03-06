@@ -10,6 +10,12 @@ import { useAppStore } from '../lib/store'
 import { t } from '../lib/i18n'
 import { InlineLoading } from '../components/Loading'
 
+type LoginLocationState = {
+  from?: {
+    pathname?: string
+  }
+}
+
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -37,7 +43,7 @@ export default function Login() {
       await login(username.trim())
 
       // 登录成功，跳转到之前的页面或首页
-      const from = (location.state as any)?.from?.pathname || '/'
+      const from = (location.state as LoginLocationState | null)?.from?.pathname || '/'
       navigate(from, { replace: true })
     } catch (err) {
       // 错误已经在store中处理

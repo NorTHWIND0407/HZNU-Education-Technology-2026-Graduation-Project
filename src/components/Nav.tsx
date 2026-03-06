@@ -23,6 +23,13 @@ export default function Nav() {
     { to: '/feedback', label: 'nav_feedback' },
   ]
 
+  const roleBadgeClass =
+    user?.role === 'teacher'
+      ? 'badge-gold'
+      : user?.role === 'admin'
+        ? 'badge-jade'
+        : 'badge'
+
   return (
     <header className="sticky top-0 z-50 border-b-2 border-gold-200 dark:border-gold-800/30 bg-paper/95 dark:bg-paper-dark/95 backdrop-blur-md shadow-traditional">
       <div className="container-narrow">
@@ -120,7 +127,7 @@ export default function Nav() {
                       <p className="font-semibold text-ink-900 dark:text-gray-100">{user.displayName}</p>
                       <p className="text-xs text-ink-500 dark:text-gray-500 font-mono">{user.username}</p>
                       <div className="mt-2 flex items-center gap-2">
-                        <span className={`badge-${user.role === 'teacher' ? 'gold' : user.role === 'admin' ? 'jade' : ''}`}>
+                        <span className={roleBadgeClass}>
                           {user.role === 'student' && (lang === 'zh' ? '学生' : 'Student')}
                           {user.role === 'teacher' && (lang === 'zh' ? '教师' : 'Teacher')}
                           {user.role === 'admin' && (lang === 'zh' ? '管理员' : 'Admin')}

@@ -1,6 +1,6 @@
-type Item = { id: string; title: string; desc: string; media?: string; ts?: string }
+import type { Entry } from '../types/content'
 
-export default function Timeline({ items }: { items: Item[] }) {
+export default function Timeline({ items }: { items: Entry[] }) {
   return (
     <ol className="relative border-s border-gray-200 dark:border-gray-800 ml-3">
       {items.map((it) => (
@@ -17,4 +17,3 @@ export default function Timeline({ items }: { items: Item[] }) {
     </ol>
   )
 }
-

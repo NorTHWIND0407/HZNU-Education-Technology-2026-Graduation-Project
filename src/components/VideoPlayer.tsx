@@ -1,10 +1,10 @@
-type Source = { label: string; src: string }
+import type { VideoSource } from '../types/content'
 
 export default function VideoPlayer({
   sources,
   poster
 }: {
-  sources: Source[]
+  sources: VideoSource[]
   poster?: string
 }) {
   /* TODO: 替换说明
@@ -22,10 +22,9 @@ export default function VideoPlayer({
       </video>
       <div className="mt-2 flex gap-2 text-xs text-gray-500">
         {sources.map(s => (
-          <span key={s.label} className="px-2 py-1 border rounded">{s.label} (Mock)</span>
+          <span key={s.label} className="px-2 py-1 border rounded">{s.label}</span>
         ))}
       </div>
     </div>
   )
 }
-

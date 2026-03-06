@@ -1,14 +1,6 @@
 import React from 'react'
 import { fetchJSONC } from '../lib/api'
-
-type Entry = {
-  id: string
-  title: string
-  desc: string
-  media?: string
-  ts?: string
-  keywords?: string[]
-}
+import type { Entry } from '../types/content'
 
 export default function AboutLantern() {
   const [entries, setEntries] = React.useState<Entry[]>([])

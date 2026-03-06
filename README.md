@@ -62,6 +62,7 @@ pnpm test
 /content         # 所有可编辑内容配置，支持 JSONC（可写 // 和 /* */ 注释）
   entries.json       # 百科词条与时间轴
   lessons.json       # 微课与动作分解
+  microdoc.json      # 微纪录片播放列表
   handbook.json      # H5 互动手册题库与章节
   cross_subject.json # 跨学科融合点位（参考用）
   faq.json           # AI 预置问答（Mock 模式用）
@@ -216,8 +217,8 @@ pnpm test
   - 支持输入关键字搜索（如“滚灯 起源”“滚灯 制作”等），使用 `entries.json` 进行模糊匹配。
   - 左侧为搜索结果列表，右侧为当前选中条目的详细内容。
 - 微纪录片 `/microdoc`
-  - 播放清单写在 `src/pages/Microdoc.tsx` 内，默认使用占位视频路径 `/public/videos/placeholder_*.mp4`。
-  - 替换步骤：将真实 MP4 放入 `public/videos`，修改页面中的 `sources` 列表。
+  - 播放清单来自 `content/microdoc.json`，默认使用占位视频路径 `/public/videos/placeholder_*.mp4`。
+  - 替换步骤：将真实 MP4 放入 `public/videos`，修改 `microdoc.json` 中对应条目的 `sources` 列表。
 - 动作微课 `/lessons`
   - 列表与节拍详解从 `content/lessons.json` 读取。
   - 每一条微课可以勾选“本地练习完成”，进度保存到浏览器 LocalStorage，刷新后仍然保留。
@@ -417,4 +418,3 @@ pnpm dev
 如果你愿意，我可以在下一步帮助你：
 - 直接为语文 / 美术 / 科学等学科撰写几套完整的“滚灯课程项目”案例，并填入 `content/resources.json`；
 - 或者按论文结构帮你从 README 中提炼出“系统设计”“功能模块”“AI 应用”等章节的文字说明。
-

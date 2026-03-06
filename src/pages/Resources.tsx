@@ -1,26 +1,7 @@
 import React from 'react'
 import { fetchJSONC } from '../lib/api'
 import { useAppStore } from '../lib/store'
-
-type ResourceFile = {
-  id: string
-  label: string
-  type: string
-  format?: string
-  previewUrl?: string
-  downloadUrl: string
-}
-
-type CourseResource = {
-  id: string
-  subject: string
-  subjectEn?: string
-  title: string
-  grade?: string
-  summary?: string
-  keywords?: string[]
-  files: ResourceFile[]
-}
+import type { CourseResource, ResourceFile } from '../types/content'
 
 export default function Resources() {
   const lang = useAppStore(s => s.lang)
@@ -259,4 +240,3 @@ export default function Resources() {
     </div>
   )
 }
-
