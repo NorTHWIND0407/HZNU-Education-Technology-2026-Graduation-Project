@@ -3,10 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@10.30.3",
   "description": "GAI 赋能的小学文化传承——临平滚灯 | 可运行占位/Mock 骨架",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:check": "pnpm run doctor:deps && pnpm run build",
+    "doctor:deps": "node scripts/doctor-deps.mjs",
+    "setup:clean": "rm -rf node_modules && pnpm install --frozen-lockfile",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
