@@ -5,6 +5,15 @@
 - 技术栈：Vite + React + TypeScript + React Router + TailwindCSS + Zustand + Recharts + A‑Frame（CDN，可 Mock）
 - 特性：全站占位/注释、Mock/真接口切换、AR 降级、双语与暗色模式、本地表单存储、简单登录与反馈系统、AI 问答模块
 - 本地运行与构建排障：见 `本地运行教程.md`
+- 文档最后整理：2026-03-10
+
+## 文档导航
+
+- 项目总览：`README.md`（本文件）
+- 本地运行与排障：`本地运行教程.md`
+- 服务器部署与重启：`DEPLOY_MANUAL.md`
+- AI Prompt 调整：`Prompt编辑指南.md`
+- 历史变更记录：`CHANGELOG.md`
 
 ---
 
