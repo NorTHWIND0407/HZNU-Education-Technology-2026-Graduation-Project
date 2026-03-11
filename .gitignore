@@ -24,3 +24,12 @@ pnpm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+
+# unity artifacts
+UnityProjects/RollingLanternAR/My project (1)/[Ll]ibrary/
+UnityProjects/RollingLanternAR/My project (1)/[Tt]emp/
+UnityProjects/RollingLanternAR/My project (1)/[Oo]bj/
+UnityProjects/RollingLanternAR/My project (1)/[Bb]uild/
+UnityProjects/RollingLanternAR/My project (1)/[Bb]uilds/
+UnityProjects/RollingLanternAR/My project (1)/Logs/
+UnityProjects/RollingLanternAR/My project (1)/UserSettings/
