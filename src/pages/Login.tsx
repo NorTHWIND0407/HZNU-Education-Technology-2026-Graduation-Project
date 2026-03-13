@@ -154,17 +154,16 @@ export default function Login() {
               </p>
               <div className="space-y-2">
                 {[
-                  { role: 'student' as const, id: 'student001', label: lang === 'zh' ? '学生账号' : 'Student', icon: '👨‍🎓' },
-                  { role: 'teacher' as const, id: 'T001', label: lang === 'zh' ? '教师账号' : 'Teacher', icon: '👨‍🏫' },
-                  { role: 'admin' as const, id: 'admin', label: lang === 'zh' ? '管理员' : 'Admin', icon: '👤' }
-                ].map(({ role, id, label, icon }) => (
+                  { role: 'student' as const, id: 'student001', label: lang === 'zh' ? '学生账号' : 'Student' },
+                  { role: 'teacher' as const, id: 'T001', label: lang === 'zh' ? '教师账号' : 'Teacher' },
+                  { role: 'admin' as const, id: 'admin', label: lang === 'zh' ? '管理员' : 'Admin' }
+                ].map(({ role, id, label }) => (
                   <button
                     key={role}
                     onClick={() => quickLogin(role)}
                     className="w-full flex items-center justify-between p-3 rounded-md border-2 border-gold-200 dark:border-gold-800 hover:border-brand-400 hover:bg-white dark:hover:bg-ink-800 transition-all group"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{icon}</span>
                       <div className="text-left">
                         <div className="text-sm font-medium text-ink-800 dark:text-gray-200">{label}</div>
                         <div className="text-xs text-ink-500 dark:text-gray-500 font-mono">{id}</div>
@@ -178,8 +177,8 @@ export default function Login() {
               </div>
               <p className="mt-3 text-xs text-ink-600 dark:text-gray-400">
                 {lang === 'zh'
-                  ? '💡 提示：学号以字母开头自动识别为教师，其他为学生'
-                  : '💡 Tip: IDs starting with letters are teachers, others are students'}
+                  ? '提示：学号以字母开头自动识别为教师，其他为学生'
+                  : 'Tip: IDs starting with letters are teachers, others are students'}
               </p>
             </div>
           )}

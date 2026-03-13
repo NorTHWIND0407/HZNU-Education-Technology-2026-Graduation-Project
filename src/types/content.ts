@@ -59,5 +59,7 @@ export type MicrodocClip = {
   id: string
   title: string
   poster?: string
-  sources: VideoSource[]
+  sources?: VideoSource[]
+  iframeSrc?: string
+  iframeTitle?: string
 }

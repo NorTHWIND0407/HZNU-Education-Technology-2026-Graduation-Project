@@ -22,7 +22,13 @@ export default function StepAnnotator({
 
   return (
     <div className="card p-4 flex flex-col gap-3">
-      <img src={thumb} alt="动作缩略图 (占位) // TODO 替换为真实帧图" className="max-h-40 rounded" />
+      <div className="w-full aspect-video overflow-hidden rounded bg-black/5">
+        <img
+          src={thumb}
+          alt="动作缩略图 (占位) // TODO 替换为真实帧图"
+          className="h-full w-full object-cover"
+        />
+      </div>
       <div className="flex items-center gap-2">
         <button className="btn" onClick={() => setCounting(v => !v)}>{counting ? 'Stop' : 'Start'} 计数</button>
         <label className="text-sm">BPM
@@ -38,4 +44,3 @@ export default function StepAnnotator({
     </div>
   )
 }
-

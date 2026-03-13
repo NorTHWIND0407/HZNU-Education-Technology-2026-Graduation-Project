@@ -67,7 +67,7 @@ export default function AboutLantern() {
         <div className="w-full md:w-1/3">
           <div className="relative rounded-xl overflow-hidden shadow-traditional-lg">
             <img
-              src="/images/placeholder_about.jpg"
+              src="/images/about/about-cover-lantern-01.jpg"
               alt="临平滚灯示意图（可替换为AI生成的小图）"
               className="w-full h-auto object-cover"
             />

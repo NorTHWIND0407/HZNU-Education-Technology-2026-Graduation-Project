@@ -314,10 +314,10 @@ export default function QAChat() {
           }`} />
           <span className="text-sm font-medium text-ink-800 dark:text-gray-200">
             {config?.mode === 'mock'
-              ? lang === 'zh' ? '🧪 Mock模式 - 演示数据' : '🧪 Mock Mode - Demo Data'
+              ? lang === 'zh' ? 'Mock模式 - 演示数据' : 'Mock Mode - Demo Data'
               : config?.enabled
-                ? lang === 'zh' ? `🤖 火山引擎 AI (${config.model})` : `🤖 Volcengine AI (${config.model})`
-                : lang === 'zh' ? '❌ AI未配置' : '❌ AI Not Configured'}
+                ? lang === 'zh' ? `火山引擎 AI (${config.model})` : `Volcengine AI (${config.model})`
+                : lang === 'zh' ? 'AI未配置' : 'AI Not Configured'}
           </span>
         </div>
         {config?.mode === 'mock' && (
@@ -339,7 +339,9 @@ export default function QAChat() {
         >
           {messages.length === 0 && !isStreaming && (
             <div className="text-center py-12 text-ink-500 dark:text-gray-400">
-              <div className="text-6xl mb-4">💡</div>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full border-2 border-gold-300 dark:border-gold-700 text-sm font-semibold text-ink-700 dark:text-gray-300 mb-4">
+                AI
+              </div>
               <p className="text-lg font-medium mb-2">
                 {lang === 'zh' ? '开始你的探索之旅' : 'Start Your Journey'}
               </p>
@@ -364,8 +366,12 @@ export default function QAChat() {
                 }`}
               >
                 <div className="flex items-start gap-2">
-                  <div className="text-2xl flex-shrink-0">
-                    {msg.role === 'user' ? '👤' : '🤖'}
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 ${
+                    msg.role === 'user'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-brand-500/10 text-brand-700 dark:text-brand-300'
+                  }`}>
+                    {msg.role === 'user' ? (lang === 'zh' ? '我' : 'Me') : 'AI'}
                   </div>
                   <div className="flex-1">
                     <p className={`text-sm whitespace-pre-wrap ${
@@ -395,7 +401,9 @@ export default function QAChat() {
             <div className="flex justify-start animate-fade-in">
               <div className="max-w-[80%] rounded-lg p-3 bg-gold-50 dark:bg-ink-800 border-2 border-gold-200 dark:border-gold-800">
                 <div className="flex items-start gap-2">
-                  <div className="text-2xl flex-shrink-0">🤖</div>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0 bg-brand-500/10 text-brand-700 dark:text-brand-300">
+                    AI
+                  </div>
                   <div className="flex-1">
                     <p className="text-sm whitespace-pre-wrap text-ink-800 dark:text-gray-200">
                       {streamingMessage}
@@ -414,7 +422,7 @@ export default function QAChat() {
         {messages.length === 0 && !isStreaming && (
           <div className="mb-4">
             <p className="text-xs font-medium text-ink-600 dark:text-gray-400 mb-2">
-              {lang === 'zh' ? '💬 快捷提问（点击直接发送）：' : '💬 Quick Questions (Click to send):'}
+              {lang === 'zh' ? '快捷提问（点击直接发送）：' : 'Quick Questions (Click to send):'}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {quickQuestions.map((q, i) => (
@@ -467,17 +475,17 @@ export default function QAChat() {
               <button
                 onClick={handleClear}
                 disabled={loading}
-                className="btn-outline"
+                className="btn-outline px-4"
                 aria-label={lang === 'zh' ? '清除' : 'Clear'}
               >
-                🗑️
+                {lang === 'zh' ? '清空' : 'Clear'}
               </button>
             )}
           </div>
           <p className="mt-2 text-xs text-ink-500 dark:text-gray-500">
             {lang === 'zh'
-              ? '💡 提示：按 Enter 发送，Shift+Enter 换行'
-              : '💡 Tip: Press Enter to send, Shift+Enter for new line'}
+              ? '提示：按 Enter 发送，Shift+Enter 换行'
+              : 'Tip: Press Enter to send, Shift+Enter for new line'}
           </p>
         </div>
       </div>

@@ -5,7 +5,7 @@
 
 import express from 'express'
 import { nanoid } from 'nanoid'
-import { UserDB, SessionDB } from '../db/mock.js'
+import { UserDB, SessionDB } from '../db/index.js'
 
 const router = express.Router()
 

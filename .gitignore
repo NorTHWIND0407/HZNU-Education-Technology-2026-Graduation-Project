@@ -12,6 +12,8 @@ coverage/
 .env.local
 .env.*.local
 server/.env
+server/data/*.db
+server/data/*.sqlite
 
 # logs
 *.log

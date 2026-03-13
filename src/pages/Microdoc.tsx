@@ -25,7 +25,7 @@ export default function Microdoc() {
           {playlist.map(item => (
             <li key={item.id}>
               <h3 className="font-medium mb-2">{item.title}</h3>
-              <VideoPlayer sources={item.sources} poster={item.poster} />
+              <VideoPlayer sources={item.sources} poster={item.poster} iframeSrc={item.iframeSrc} iframeTitle={item.iframeTitle} />
             </li>
           ))}
         </ul>

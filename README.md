@@ -3,9 +3,9 @@
 本项目是“临平滚灯”主题的小学文化传承网站骨架，在没有真实素材的情况下也可以直接跑起来预览。你只需要按本文档的操作教程替换占位资源、按需启动后端与 AI 配置，即可完成自己的毕业设计展示。
 
 - 技术栈：Vite + React + TypeScript + React Router + TailwindCSS + Zustand + Recharts + A‑Frame（CDN，可 Mock）
-- 特性：全站占位/注释、Mock/真接口切换、AR 降级、双语与暗色模式、本地表单存储、简单登录与反馈系统、AI 问答模块
+- 特性：全站占位/注释、Mock/真接口切换、AR 降级、双语与暗色模式、登录与反馈统计（SQLite 本地持久化）、AI 问答模块
 - 本地运行与构建排障：见 `本地运行教程.md`
-- 文档最后整理：2026-03-10
+- 文档最后整理：2026-03-12
 
 ## 文档导航
 
@@ -37,6 +37,7 @@ npm install
 ```bash
 # 终端 1：后端（提供 /api 与 /ws）
 cd server
+npm run db:init   # 首次运行建议执行；会初始化/检查 SQLite 数据库文件
 npm run dev
 
 # 终端 2：前端
@@ -95,7 +96,7 @@ pnpm test
 
 /server               # 后端（登录 + 反馈 + 统计 API）
   routes/             # auth、feedback、stats 等路由
-  db/                 # 简易数据库层（默认 sqlite 风格文件）
+  db/                 # SQLite 文件持久化数据库层（sql.js）
   scripts/            # 初始化/填充数据库脚本
   index.js            # 服务器入口（含 WebSocket）
   .env(.example)      # 后端环境变量配置
@@ -276,7 +277,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 
 ```bash
 cd server
-npm run db:init   # 初始化数据库（可选，首次使用时执行）
+npm run db:init   # 初始化/检查 SQLite 数据库（首次必做，后续可重复执行）
 npm run dev       # 开发环境；或 npm start 运行生产模式
 ```
 
@@ -303,7 +304,43 @@ npm run dev       # 开发环境；或 npm start 运行生产模式
 5. 反馈数据与可视化（概览）
 
 - 后端提供 `/api/feedback/*` 与 `/api/stats/*` 接口；前端通过 `src/lib/apiClient.ts` 调用。
-- 默认使用本地 sqlite 风格数据文件（`./data/feedback.db`），适合课堂演示与毕业设计展示；如需更复杂部署，可根据 `database-schema.sql` 迁移到真实数据库。
+- 后端默认使用本地 SQLite 持久化文件（`server/data/feedback.db`）。
+- 反馈数据按账号写入数据库，重启服务后不会丢失；同账号跨会话可继续查看历史反馈。
+- 适合课堂演示与毕业设计本地部署；如需上云，可根据 `database-schema.sql` 迁移到 MySQL / PostgreSQL。
+
+6. 本版本（2026-03-12）后端数据库变更摘要
+
+- 数据库实现由“内存 Mock”改为“SQLite 文件持久化（sql.js）”。
+- 服务启动时自动初始化数据库（`server/index.js` 中执行 `initDB()`）。
+- `auth` / `feedback` / `stats` / `users` 路由统一接入 `server/db/index.js`。
+- `npm run db:init` 已切换为 SQLite 初始化流程。
+- 新增 `.gitignore` 规则，默认忽略 `server/data/*.db`，避免误提交数据文件。
+
+7. 数据库备份、恢复与迁移（论文附录可引用）
+
+- 当前数据库类型：SQLite（单文件），默认路径：`server/data/feedback.db`。
+
+（1）备份（本地或服务器）
+
+```bash
+cp server/data/feedback.db server/data/feedback.db.bak.$(date +%Y%m%d-%H%M%S)
+```
+
+（2）恢复（回滚到指定备份）
+
+```bash
+# 先停止后端进程（pm2 或 node）
+cp server/data/feedback.db.bak.20260312-153000 server/data/feedback.db
+```
+
+恢复后重新启动后端（`npm run dev` 或 `pm2 restart lantern-api`）。
+
+（3）迁移到其他数据库（MySQL/PostgreSQL）的最小流程
+
+1. 以 `database-schema.sql` 为基础，在目标数据库创建等价表结构。  
+2. 从 SQLite 导出核心业务表：`users`、`sessions`、`feedbacks`、`learning_progress`。  
+3. 按新数据库驱动重写 `server/db/index.js` 的 CRUD 层接口，保持路由层不变。  
+4. 先做灰度验证（登录、提交反馈、查看统计）后再切换生产环境。  
 
 ---
 
@@ -359,7 +396,7 @@ pnpm dev
 （4）验证配置：
 
 1. 打开 `http://localhost:5173/ai-qa`。
-2. 页面顶部应显示“🤖 火山引擎 AI”绿色状态。
+2. 页面顶部应显示“火山引擎 AI”绿色状态。
 3. 试着提问：
    - “临平滚灯的历史是什么？”
    - “滚灯是怎么制作的？”

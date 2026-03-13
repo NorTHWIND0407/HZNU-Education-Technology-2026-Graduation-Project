@@ -16,7 +16,7 @@ export default function AIQA() {
       {/* 页面标题 */}
       <header className="text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-brand-500 to-gold-500 shadow-traditional-lg mb-4">
-          <span className="text-3xl">🤖</span>
+          <span className="text-white text-xl font-semibold tracking-wide">AI</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-serif font-bold text-ink-900 dark:text-gray-100 mb-2">
           {lang === 'zh' ? 'AI 智能问答' : 'AI Q&A Assistant'}
@@ -34,12 +34,11 @@ export default function AIQA() {
       {/* 使用说明 */}
       <div className="card p-6">
         <h2 className="text-lg font-serif font-bold text-ink-900 dark:text-gray-100 mb-4">
-          {lang === 'zh' ? '💡 使用说明' : '💡 How to Use'}
+          {lang === 'zh' ? '使用说明' : 'How to Use'}
         </h2>
         <div className="grid md:grid-cols-2 gap-4 text-sm text-ink-700 dark:text-gray-300">
           <div>
             <h3 className="font-semibold mb-2 flex items-center gap-2">
-              <span>✨</span>
               {lang === 'zh' ? '功能特点' : 'Features'}
             </h3>
             <ul className="space-y-1 text-ink-600 dark:text-gray-400">
@@ -51,7 +50,6 @@ export default function AIQA() {
           </div>
           <div>
             <h3 className="font-semibold mb-2 flex items-center gap-2">
-              <span>📝</span>
               {lang === 'zh' ? '提问技巧' : 'Tips'}
             </h3>
             <ul className="space-y-1 text-ink-600 dark:text-gray-400">
@@ -68,13 +66,13 @@ export default function AIQA() {
       <div className="text-xs text-center text-ink-500 dark:text-gray-500 space-y-1">
         <p>
           {lang === 'zh'
-            ? '🔒 所有对话内容仅用于学习目的，不会被永久保存'
-            : '🔒 All conversations are for learning purposes only and will not be permanently stored'}
+            ? '所有对话内容仅用于学习目的，不会被永久保存'
+            : 'All conversations are for learning purposes only and will not be permanently stored'}
         </p>
         <p>
           {lang === 'zh'
-            ? '⚠️ AI回答仅供参考，如有疑问请咨询老师'
-            : '⚠️ AI answers are for reference only. Please consult your teacher if you have questions'}
+            ? 'AI回答仅供参考，如有疑问请咨询老师'
+            : 'AI answers are for reference only. Please consult your teacher if you have questions'}
         </p>
       </div>
     </div>

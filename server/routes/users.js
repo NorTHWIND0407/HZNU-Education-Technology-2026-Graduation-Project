@@ -4,7 +4,7 @@
  */
 
 import express from 'express'
-import { UserDB, SessionDB } from '../db/mock.js'
+import { UserDB, SessionDB } from '../db/index.js'
 
 const router = express.Router()
 
@@ -133,47 +133,25 @@ router.patch('/:id', authMiddleware, (req, res) => {
   try {
     const { id } = req.params
     const { displayName, grade, classId, avatarUrl } = req.body
+    const numericId = parseInt(id, 10)
 
     // 只能更新自己或管理员更新所有
-    if (req.user.id !== parseInt(id) && req.user.role !== 'admin') {
+    if (req.user.id !== numericId && req.user.role !== 'admin') {
       return res.status(403).json({
         error: 'Forbidden',
         message: '无权修改此用户信息'
       })
     }
 
-    const db = require('../db/index.js').getDB()
-    const updates = []
-    const params = []
-
-    if (displayName) {
-      updates.push('display_name = ?')
-      params.push(displayName)
-    }
-    if (grade) {
-      updates.push('grade = ?')
-      params.push(grade)
-    }
-    if (classId) {
-      updates.push('class_id = ?')
-      params.push(classId)
-    }
-    if (avatarUrl) {
-      updates.push('avatar_url = ?')
-      params.push(avatarUrl)
-    }
-
-    if (updates.length === 0) {
+    const updateResult = UserDB.updateProfile(numericId, { displayName, grade, classId, avatarUrl })
+    if (!updateResult.changes) {
       return res.status(400).json({
         error: 'No updates',
         message: '没有要更新的字段'
       })
     }
 
-    params.push(id)
-    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...params)
-
-    const user = UserDB.findById(id)
+    const user = UserDB.findById(numericId)
 
     res.json({
       success: true,

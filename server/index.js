@@ -10,6 +10,7 @@ import rateLimit from 'express-rate-limit'
 import { WebSocketServer } from 'ws'
 import { createServer } from 'http'
 import dotenv from 'dotenv'
+import { initDB, closeDB } from './db/index.js'
 
 // 导入路由
 import authRoutes from './routes/auth.js'
@@ -140,12 +141,31 @@ export function broadcast(channel, data) {
 // 启动服务器
 // ============================================
 
-server.listen(PORT, () => {
-  console.log('='.repeat(50))
-  console.log(`🚀 服务器运行在 http://localhost:${PORT}`)
-  console.log(`📊 WebSocket 端点: ws://localhost:${PORT}/ws`)
-  console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`)
-  console.log('='.repeat(50))
+async function startServer() {
+  await initDB()
+
+  server.listen(PORT, () => {
+    console.log('='.repeat(50))
+    console.log(`🚀 服务器运行在 http://localhost:${PORT}`)
+    console.log(`📊 WebSocket 端点: ws://localhost:${PORT}/ws`)
+    console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`)
+    console.log('='.repeat(50))
+  })
+}
+
+startServer().catch(err => {
+  console.error('[Server] Failed to start:', err)
+  process.exit(1)
+})
+
+process.on('SIGINT', () => {
+  closeDB()
+  process.exit(0)
+})
+
+process.on('SIGTERM', () => {
+  closeDB()
+  process.exit(0)
 })
 
 export default app

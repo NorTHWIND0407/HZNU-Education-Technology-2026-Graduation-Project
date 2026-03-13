@@ -43,7 +43,11 @@ export default function ProtectedRoute({ children, roles }: ProtectedRouteProps)
       return (
         <div className="min-h-screen flex items-center justify-center px-4">
           <div className="card p-8 max-w-md text-center">
-            <div className="text-6xl mb-4">🚫</div>
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300 mb-4">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 11-12.728 0m12.728 0L5.636 18.364m12.728-12.728L5.636 18.364" />
+              </svg>
+            </div>
             <h1 className="text-2xl font-serif font-bold text-ink-900 dark:text-gray-100 mb-2">
               权限不足
             </h1>

@@ -2,6 +2,17 @@
 
 本文档用于统一维护项目的历史更改日期、版本与关键改动。
 
+## 2026-03-12（v2.2 - 反馈系统持久化数据库版）
+
+- 将后端反馈系统数据库实现从内存 Mock 改为 SQLite 文件持久化（`sql.js`）。
+- 服务启动时自动初始化数据库，默认数据文件为 `server/data/feedback.db`。
+- `auth`、`feedback`、`stats`、`users` 路由统一改为使用 `server/db/index.js`。
+- `server/scripts/init-db.js` 改为 SQLite 初始化脚本，支持重复执行。
+- 新增数据库文件忽略规则：`.gitignore` 中忽略 `server/data/*.db`、`server/data/*.sqlite`。
+- 验证结果：
+  - 前端单元测试通过（`pnpm test`）。
+  - 数据库链路自测通过（用户登录会话、反馈写入、统计读取）。
+
 ## 2026-03-10（文档整理）
 
 - 新增统一变更记录：`CHANGELOG.md`。
@@ -37,4 +48,3 @@
   - `src/lib/aiClient.ts`
   - `src/components/QAChat.tsx`
   - `src/pages/AIQA.tsx`
-

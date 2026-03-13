@@ -52,7 +52,25 @@ pnpm build
 # 后端
 cd server
 npm ci
+npm run db:init
 cd ..
+```
+
+### 3.1 数据库文件说明（SQLite）
+
+- 默认数据库文件：`server/data/feedback.db`。
+- 该文件保存登录会话、用户与反馈统计数据，发布后不会因为重启 `pm2` 而丢失。
+- 建议发布前备份一次数据库：
+
+```bash
+cp server/data/feedback.db server/data/feedback.db.bak.$(date +%Y%m%d-%H%M%S)
+```
+
+- 需要恢复时（先停后端，再覆盖数据库文件）：
+
+```bash
+cp server/data/feedback.db.bak.20260312-153000 server/data/feedback.db
+pm2 restart lantern-api --update-env
 ```
 
 ---
@@ -115,7 +133,7 @@ systemctl status nginx
 
 1. 本地 `git push Main main`  
 2. 服务器 `git pull Main main`  
-3. 服务器重新安装依赖（如有变更）并 `pnpm build`  
-4. `pm2 restart lantern-api --update-env`  
-5. `sudo systemctl reload nginx`  
-
+3. 服务器备份 `server/data/feedback.db`（建议）  
+4. 服务器重新安装依赖（如有变更），执行 `pnpm build` 与 `cd server && npm run db:init`  
+5. `pm2 restart lantern-api --update-env`  
+6. `sudo systemctl reload nginx`  

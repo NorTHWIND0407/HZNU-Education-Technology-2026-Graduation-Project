@@ -4,7 +4,7 @@
  */
 
 import express from 'express'
-import { StatsDB, SessionDB, FeedbackDB } from '../db/mock.js'
+import { StatsDB, SessionDB, FeedbackDB } from '../db/index.js'
 
 const router = express.Router()
 

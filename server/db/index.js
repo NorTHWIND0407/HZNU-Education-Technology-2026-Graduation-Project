@@ -1,65 +1,139 @@
 /**
- * 数据库工具类
- * Database Utility
+ * SQLite 文件数据库工具（基于 sql.js）
+ * Persistent SQLite DB (using sql.js)
  */
 
-import Database from 'better-sqlite3'
-import { readFileSync } from 'fs'
+import initSqlJs from 'sql.js'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { dirname, join, isAbsolute, resolve } from 'path'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+const serverRoot = join(__dirname, '..')
+const configuredPath = process.env.DATABASE_PATH || './data/feedback.db'
+const DB_PATH = isAbsolute(configuredPath) ? configuredPath : resolve(serverRoot, configuredPath)
+const SCHEMA_PATH = join(serverRoot, '../database-schema.sql')
 
-const DB_PATH = process.env.DATABASE_PATH || join(__dirname, '../data/feedback.db')
-
-// 创建数据库连接
+let SQLRuntime = null
 let db = null
 
-export function getDB() {
-  if (!db) {
-    db = new Database(DB_PATH, { verbose: console.log })
-    db.pragma('journal_mode = WAL')
-    console.log(`[DB] Connected to ${DB_PATH}`)
+function ensureDirForFile(filePath) {
+  const dir = dirname(filePath)
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
   }
-  return db
+}
+
+function assertReady() {
+  if (!db) {
+    throw new Error('Database not initialized. Call initDB() first.')
+  }
+}
+
+function persistDB() {
+  assertReady()
+  ensureDirForFile(DB_PATH)
+  const data = db.export()
+  writeFileSync(DB_PATH, Buffer.from(data))
+}
+
+function queryAll(sql, params = []) {
+  assertReady()
+  const stmt = db.prepare(sql)
+  try {
+    stmt.bind(params)
+    const rows = []
+    while (stmt.step()) {
+      rows.push(stmt.getAsObject())
+    }
+    return rows
+  } finally {
+    stmt.free()
+  }
+}
+
+function queryGet(sql, params = []) {
+  const rows = queryAll(sql, params)
+  return rows[0] || null
+}
+
+function run(sql, params = []) {
+  assertReady()
+  db.run(sql, params)
+  const changes = Number(db.getRowsModified() || 0)
+  const result = db.exec('SELECT last_insert_rowid() AS id')
+  const lastInsertRowid = Number(result?.[0]?.values?.[0]?.[0] || 0)
+  persistDB()
+  return {
+    lastInsertRowid,
+    changes
+  }
+}
+
+function normalizeNullable(value) {
+  if (value === undefined || value === null || value === '') return null
+  return value
+}
+
+function isExpired(isoOrDateTimeText) {
+  const ts = new Date(isoOrDateTimeText).getTime()
+  if (Number.isNaN(ts)) return true
+  return ts <= Date.now()
+}
+
+function seedDefaultUsers() {
+  const defaults = [
+    ['admin', '管理员', 'admin', null, null, 'linping_primary'],
+    ['T001', '张老师', 'teacher', '三年级', 'class_3a', 'linping_primary'],
+    ['student001', '小明', 'student', '三年级', 'class_3a', 'linping_primary']
+  ]
+
+  for (const [username, displayName, role, grade, classId, schoolId] of defaults) {
+    run(
+      `INSERT OR IGNORE INTO users
+        (username, display_name, role, grade, class_id, school_id, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [username, displayName, role, grade, classId, schoolId, '{}']
+    )
+  }
 }
 
 // 初始化数据库
-export function initDB() {
-  const db = getDB()
-  const schemaPath = join(__dirname, '../../database-schema.sql')
-  const schema = readFileSync(schemaPath, 'utf-8')
+export async function initDB() {
+  if (db) return db
 
-  // 分割并执行SQL语句
-  const statements = schema
-    .split(';')
-    .map(s => s.trim())
-    .filter(s => s && !s.startsWith('--'))
+  SQLRuntime = await initSqlJs()
+  ensureDirForFile(DB_PATH)
 
-  statements.forEach(statement => {
-    try {
-      if (statement) {
-        db.exec(statement)
-      }
-    } catch (err) {
-      if (!err.message.includes('already exists')) {
-        console.error('SQL Error:', err.message)
-      }
-    }
-  })
+  if (existsSync(DB_PATH)) {
+    db = new SQLRuntime.Database(readFileSync(DB_PATH))
+    console.log(`[DB] Loaded database from ${DB_PATH}`)
+  } else {
+    db = new SQLRuntime.Database()
+    const schema = readFileSync(SCHEMA_PATH, 'utf-8')
+    db.exec(schema)
+    persistDB()
+    console.log(`[DB] Created database at ${DB_PATH}`)
+  }
 
-  console.log('[DB] Database initialized')
+  // 首次或升级后兜底写入示例账号（避免前端示例账号无班级）
+  seedDefaultUsers()
+  return db
+}
+
+export function getDB() {
+  assertReady()
   return db
 }
 
 // 关闭数据库连接
 export function closeDB() {
-  if (db) {
-    db.close()
-    db = null
-    console.log('[DB] Connection closed')
-  }
+  if (!db) return
+  persistDB()
+  db.close()
+  db = null
+  console.log('[DB] Connection closed')
 }
 
 // ============================================
@@ -67,38 +141,63 @@ export function closeDB() {
 // ============================================
 
 export const UserDB = {
-  // 创建用户
   create(userData) {
-    const db = getDB()
-    const stmt = db.prepare(`
-      INSERT INTO users (username, display_name, role, grade, class_id, school_id, metadata)
-      VALUES (@username, @display_name, @role, @grade, @class_id, @school_id, @metadata)
-    `)
-    return stmt.run(userData)
+    return run(
+      `INSERT INTO users (username, display_name, role, grade, class_id, school_id, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userData.username,
+        userData.display_name,
+        userData.role,
+        normalizeNullable(userData.grade),
+        normalizeNullable(userData.class_id),
+        normalizeNullable(userData.school_id),
+        normalizeNullable(userData.metadata)
+      ]
+    )
   },
 
-  // 通过用户名查找
   findByUsername(username) {
-    const db = getDB()
-    return db.prepare('SELECT * FROM users WHERE username = ?').get(username)
+    return queryGet('SELECT * FROM users WHERE username = ?', [username])
   },
 
-  // 通过ID查找
   findById(id) {
-    const db = getDB()
-    return db.prepare('SELECT * FROM users WHERE id = ?').get(id)
+    return queryGet('SELECT * FROM users WHERE id = ?', [Number(id)])
   },
 
-  // 更新最后登录时间
   updateLastLogin(id) {
-    const db = getDB()
-    return db.prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?').run(id)
+    return run('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [Number(id)])
   },
 
-  // 获取班级用户列表
   findByClass(classId) {
-    const db = getDB()
-    return db.prepare('SELECT * FROM users WHERE class_id = ? AND is_active = 1').all(classId)
+    return queryAll('SELECT * FROM users WHERE class_id = ? AND is_active = 1', [classId])
+  },
+
+  updateProfile(id, updates) {
+    const sets = []
+    const params = []
+
+    if (updates.displayName !== undefined) {
+      sets.push('display_name = ?')
+      params.push(normalizeNullable(updates.displayName))
+    }
+    if (updates.grade !== undefined) {
+      sets.push('grade = ?')
+      params.push(normalizeNullable(updates.grade))
+    }
+    if (updates.classId !== undefined) {
+      sets.push('class_id = ?')
+      params.push(normalizeNullable(updates.classId))
+    }
+    if (updates.avatarUrl !== undefined) {
+      sets.push('avatar_url = ?')
+      params.push(normalizeNullable(updates.avatarUrl))
+    }
+
+    if (!sets.length) return { changes: 0 }
+
+    params.push(Number(id))
+    return run(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, params)
   }
 }
 
@@ -107,36 +206,60 @@ export const UserDB = {
 // ============================================
 
 export const SessionDB = {
-  // 创建session
   create(userId, token, expiresAt, ipAddress, userAgent) {
-    const db = getDB()
-    const stmt = db.prepare(`
-      INSERT INTO sessions (user_id, session_token, expires_at, ip_address, user_agent)
-      VALUES (?, ?, ?, ?, ?)
-    `)
-    return stmt.run(userId, token, expiresAt, ipAddress, userAgent)
+    return run(
+      `INSERT INTO sessions (user_id, session_token, expires_at, ip_address, user_agent)
+       VALUES (?, ?, ?, ?, ?)`,
+      [Number(userId), token, expiresAt, normalizeNullable(ipAddress), normalizeNullable(userAgent)]
+    )
   },
 
-  // 查找有效session
   findValid(token) {
-    const db = getDB()
-    return db.prepare(`
-      SELECT s.*, u.* FROM sessions s
-      JOIN users u ON s.user_id = u.id
-      WHERE s.session_token = ? AND s.expires_at > datetime('now')
-    `).get(token)
+    const row = queryGet(
+      `SELECT
+         s.id AS session_id,
+         s.user_id,
+         s.session_token,
+         s.expires_at,
+         s.created_at AS session_created_at,
+         s.ip_address,
+         s.user_agent,
+         u.id AS id,
+         u.username,
+         u.display_name,
+         u.role,
+         u.grade,
+         u.class_id,
+         u.school_id,
+         u.avatar_url,
+         u.created_at,
+         u.last_login,
+         u.is_active
+       FROM sessions s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.session_token = ?`,
+      [token]
+    )
+
+    if (!row || isExpired(row.expires_at)) {
+      if (row) this.delete(token)
+      return null
+    }
+
+    return row
   },
 
-  // 删除session
   delete(token) {
-    const db = getDB()
-    return db.prepare('DELETE FROM sessions WHERE session_token = ?').run(token)
+    return run('DELETE FROM sessions WHERE session_token = ?', [token])
   },
 
-  // 清理过期session
   cleanExpired() {
-    const db = getDB()
-    return db.prepare("DELETE FROM sessions WHERE expires_at < datetime('now')").run()
+    const sessions = queryAll('SELECT id, expires_at FROM sessions')
+    const expiredIds = sessions.filter(item => isExpired(item.expires_at)).map(item => Number(item.id))
+    if (!expiredIds.length) return { changes: 0 }
+
+    const placeholders = expiredIds.map(() => '?').join(', ')
+    return run(`DELETE FROM sessions WHERE id IN (${placeholders})`, expiredIds)
   }
 }
 
@@ -145,83 +268,98 @@ export const SessionDB = {
 // ============================================
 
 export const FeedbackDB = {
-  // 创建反馈
   create(feedbackData) {
-    const db = getDB()
-    const stmt = db.prepare(`
-      INSERT INTO feedbacks (
-        user_id, role, feedback_type, class_id, grade, modules_used,
-        understanding_score, interest_score, difficulty_score, difficulty_aspects,
-        teaching_effectiveness, student_engagement, technical_issues,
-        open_comment, suggestions, rating, tags, status
-      ) VALUES (
-        @user_id, @role, @feedback_type, @class_id, @grade, @modules_used,
-        @understanding_score, @interest_score, @difficulty_score, @difficulty_aspects,
-        @teaching_effectiveness, @student_engagement, @technical_issues,
-        @open_comment, @suggestions, @rating, @tags, @status
-      )
-    `)
-    return stmt.run(feedbackData)
+    return run(
+      `INSERT INTO feedbacks (
+         user_id, role, feedback_type, class_id, grade, modules_used, lesson_id,
+         understanding_score, interest_score, difficulty_score, difficulty_aspects,
+         teaching_effectiveness, student_engagement, technical_issues,
+         open_comment, suggestions, rating, tags, status
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        Number(feedbackData.user_id),
+        feedbackData.role,
+        feedbackData.feedback_type,
+        normalizeNullable(feedbackData.class_id),
+        normalizeNullable(feedbackData.grade),
+        normalizeNullable(feedbackData.modules_used),
+        normalizeNullable(feedbackData.lesson_id),
+        normalizeNullable(feedbackData.understanding_score),
+        normalizeNullable(feedbackData.interest_score),
+        normalizeNullable(feedbackData.difficulty_score),
+        normalizeNullable(feedbackData.difficulty_aspects),
+        normalizeNullable(feedbackData.teaching_effectiveness),
+        normalizeNullable(feedbackData.student_engagement),
+        normalizeNullable(feedbackData.technical_issues),
+        normalizeNullable(feedbackData.open_comment),
+        normalizeNullable(feedbackData.suggestions),
+        normalizeNullable(feedbackData.rating),
+        normalizeNullable(feedbackData.tags),
+        feedbackData.status || 'pending'
+      ]
+    )
   },
 
-  // 获取反馈列表
   list(filters = {}) {
-    const db = getDB()
-    let query = 'SELECT f.*, u.username, u.display_name FROM feedbacks f JOIN users u ON f.user_id = u.id WHERE 1=1'
-    const params = []
-
-    if (filters.role) {
-      query += ' AND f.role = ?'
-      params.push(filters.role)
-    }
-    if (filters.class_id) {
-      query += ' AND f.class_id = ?'
-      params.push(filters.class_id)
-    }
-    if (filters.status) {
-      query += ' AND f.status = ?'
-      params.push(filters.status)
-    }
-    if (filters.feedback_type) {
-      query += ' AND f.feedback_type = ?'
-      params.push(filters.feedback_type)
-    }
-
-    query += ' ORDER BY f.created_at DESC'
-
-    if (filters.limit) {
-      query += ' LIMIT ?'
-      params.push(filters.limit)
-    }
-
-    return db.prepare(query).all(...params)
-  },
-
-  // 获取单个反馈
-  findById(id) {
-    const db = getDB()
-    return db.prepare(`
+    let sql = `
       SELECT f.*, u.username, u.display_name
       FROM feedbacks f
       JOIN users u ON f.user_id = u.id
-      WHERE f.id = ?
-    `).get(id)
+      WHERE 1=1`
+    const params = []
+
+    if (filters.user_id) {
+      sql += ' AND f.user_id = ?'
+      params.push(Number(filters.user_id))
+    }
+    if (filters.role) {
+      sql += ' AND f.role = ?'
+      params.push(filters.role)
+    }
+    if (filters.class_id) {
+      sql += ' AND f.class_id = ?'
+      params.push(filters.class_id)
+    }
+    if (filters.status) {
+      sql += ' AND f.status = ?'
+      params.push(filters.status)
+    }
+    if (filters.feedback_type) {
+      sql += ' AND f.feedback_type = ?'
+      params.push(filters.feedback_type)
+    }
+
+    sql += ' ORDER BY f.created_at DESC'
+
+    if (filters.limit) {
+      sql += ' LIMIT ?'
+      params.push(Number(filters.limit))
+    }
+
+    return queryAll(sql, params)
   },
 
-  // 更新反馈状态
+  findById(id) {
+    return queryGet(
+      `SELECT f.*, u.username, u.display_name
+       FROM feedbacks f
+       JOIN users u ON f.user_id = u.id
+       WHERE f.id = ?`,
+      [Number(id)]
+    )
+  },
+
   updateStatus(id, status, reviewedBy = null) {
-    const db = getDB()
-    return db.prepare(`
-      UPDATE feedbacks
-      SET status = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(status, reviewedBy, id)
+    return run(
+      `UPDATE feedbacks
+       SET status = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [status, normalizeNullable(reviewedBy), Number(id)]
+    )
   },
 
-  // 删除反馈
   delete(id) {
-    const db = getDB()
-    return db.prepare('DELETE FROM feedbacks WHERE id = ?').run(id)
+    return run('DELETE FROM feedbacks WHERE id = ?', [Number(id)])
   }
 }
 
@@ -230,83 +368,66 @@ export const FeedbackDB = {
 // ============================================
 
 export const StatsDB = {
-  // 模块使用统计
   moduleUsage() {
-    const db = getDB()
-    return db.prepare(`
-      SELECT * FROM v_module_usage_stats
-    `).all()
+    return queryAll('SELECT * FROM v_module_usage_stats')
   },
 
-  // 评分趋势（按时间）
   ratingTrend(days = 30) {
-    const db = getDB()
-    return db.prepare(`
-      SELECT
-        DATE(created_at) as date,
-        COUNT(*) as count,
-        AVG(rating) as avg_rating,
-        AVG(understanding_score) as avg_understanding,
-        AVG(interest_score) as avg_interest
-      FROM feedbacks
-      WHERE created_at >= datetime('now', '-' || ? || ' days')
-        AND rating IS NOT NULL
-      GROUP BY DATE(created_at)
-      ORDER BY date
-    `).all(days)
+    return queryAll(
+      `SELECT
+         DATE(created_at) AS date,
+         COUNT(*) AS count,
+         AVG(rating) AS avg_rating,
+         AVG(understanding_score) AS avg_understanding,
+         AVG(interest_score) AS avg_interest
+       FROM feedbacks
+       WHERE created_at >= datetime('now', '-' || ? || ' days')
+         AND rating IS NOT NULL
+       GROUP BY DATE(created_at)
+       ORDER BY date`,
+      [Number(days)]
+    )
   },
 
-  // 兴趣度分布
   interestDistribution() {
-    const db = getDB()
-    return db.prepare(`
-      SELECT
-        interest_score as score,
-        COUNT(*) as count
-      FROM feedbacks
-      WHERE interest_score IS NOT NULL
-      GROUP BY interest_score
-      ORDER BY score
-    `).all()
+    return queryAll(
+      `SELECT interest_score AS score, COUNT(*) AS count
+       FROM feedbacks
+       WHERE interest_score IS NOT NULL
+       GROUP BY interest_score
+       ORDER BY score`
+    )
   },
 
-  // 理解度分布
   understandingDistribution() {
-    const db = getDB()
-    return db.prepare(`
-      SELECT
-        understanding_score as score,
-        COUNT(*) as count
-      FROM feedbacks
-      WHERE understanding_score IS NOT NULL
-      GROUP BY understanding_score
-      ORDER BY score
-    `).all()
+    return queryAll(
+      `SELECT understanding_score AS score, COUNT(*) AS count
+       FROM feedbacks
+       WHERE understanding_score IS NOT NULL
+       GROUP BY understanding_score
+       ORDER BY score`
+    )
   },
 
-  // 班级表现统计
   classPerformance() {
-    const db = getDB()
-    return db.prepare('SELECT * FROM v_class_performance').all()
+    return queryAll('SELECT * FROM v_class_performance')
   },
 
-  // 实时概览
   overview() {
-    const db = getDB()
     return {
-      totalFeedbacks: db.prepare('SELECT COUNT(*) as count FROM feedbacks').get().count,
-      totalUsers: db.prepare('SELECT COUNT(*) as count FROM users WHERE is_active = 1').get().count,
-      todayFeedbacks: db.prepare(`
-        SELECT COUNT(*) as count FROM feedbacks
-        WHERE DATE(created_at) = DATE('now')
-      `).get().count,
-      avgRating: db.prepare(`
-        SELECT AVG(rating) as avg FROM feedbacks
-        WHERE rating IS NOT NULL AND created_at >= datetime('now', '-7 days')
-      `).get().avg || 0,
-      pendingFeedbacks: db.prepare(`
-        SELECT COUNT(*) as count FROM feedbacks WHERE status = 'pending'
-      `).get().count
+      totalFeedbacks: Number(queryGet('SELECT COUNT(*) AS count FROM feedbacks')?.count || 0),
+      totalUsers: Number(queryGet('SELECT COUNT(*) AS count FROM users WHERE is_active = 1')?.count || 0),
+      todayFeedbacks: Number(
+        queryGet("SELECT COUNT(*) AS count FROM feedbacks WHERE DATE(created_at) = DATE('now')")?.count || 0
+      ),
+      avgRating: Number(
+        queryGet(
+          `SELECT AVG(rating) AS avg
+           FROM feedbacks
+           WHERE rating IS NOT NULL AND created_at >= datetime('now', '-7 days')`
+        )?.avg || 0
+      ),
+      pendingFeedbacks: Number(queryGet("SELECT COUNT(*) AS count FROM feedbacks WHERE status = 'pending'")?.count || 0)
     }
   }
 }
@@ -316,37 +437,43 @@ export const StatsDB = {
 // ============================================
 
 export const ProgressDB = {
-  // 更新或创建进度
   upsert(userId, moduleName, lessonId, data) {
-    const db = getDB()
-    const stmt = db.prepare(`
-      INSERT INTO learning_progress (
-        user_id, module_name, lesson_id, completed, completion_rate,
-        time_spent, attempts, score, max_score, started_at, last_accessed
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(user_id, module_name, lesson_id) DO UPDATE SET
-        completed = excluded.completed,
-        completion_rate = excluded.completion_rate,
-        time_spent = time_spent + excluded.time_spent,
-        attempts = attempts + 1,
-        score = excluded.score,
-        last_accessed = CURRENT_TIMESTAMP,
-        completed_at = CASE WHEN excluded.completed = 1 THEN CURRENT_TIMESTAMP ELSE completed_at END
-    `)
-    return stmt.run(
-      userId, moduleName, lessonId, data.completed, data.completion_rate,
-      data.time_spent, 1, data.score, data.max_score, data.started_at
+    return run(
+      `INSERT INTO learning_progress (
+         user_id, module_name, lesson_id, completed, completion_rate,
+         time_spent, attempts, score, max_score, started_at, last_accessed
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(user_id, module_name, lesson_id) DO UPDATE SET
+         completed = excluded.completed,
+         completion_rate = excluded.completion_rate,
+         time_spent = learning_progress.time_spent + excluded.time_spent,
+         attempts = learning_progress.attempts + 1,
+         score = excluded.score,
+         max_score = excluded.max_score,
+         last_accessed = CURRENT_TIMESTAMP,
+         completed_at = CASE WHEN excluded.completed = 1 THEN CURRENT_TIMESTAMP ELSE learning_progress.completed_at END`,
+      [
+        Number(userId),
+        moduleName,
+        normalizeNullable(lessonId),
+        data.completed ? 1 : 0,
+        Number(data.completion_rate || 0),
+        Number(data.time_spent || 0),
+        1,
+        normalizeNullable(data.score),
+        normalizeNullable(data.max_score),
+        normalizeNullable(data.started_at) || new Date().toISOString()
+      ]
     )
   },
 
-  // 获取用户进度
   getUserProgress(userId) {
-    const db = getDB()
-    return db.prepare(`
-      SELECT * FROM learning_progress
-      WHERE user_id = ?
-      ORDER BY last_accessed DESC
-    `).all(userId)
+    return queryAll(
+      `SELECT * FROM learning_progress
+       WHERE user_id = ?
+       ORDER BY last_accessed DESC`,
+      [Number(userId)]
+    )
   }
 }
 

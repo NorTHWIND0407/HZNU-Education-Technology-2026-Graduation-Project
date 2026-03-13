@@ -2,7 +2,7 @@
   {
     "id": "lesson-001",
     "title": "TODO 微课标题：基本步伐",
-    "thumb": "/images/placeholder_lesson.jpg", // TODO: 320x180 建议
+    "thumb": "/images/lessons/lesson-basic-steps-01.png", // TODO: 320x180 建议
     "clip": "/videos/placeholder.mp4",         // TODO: 替换短视频
     "beats": 4,                                  // TODO: 节拍数（4 或 8）
     "steps": ["TODO 第1步说明", "TODO 第2步说明"]
@@ -10,10 +10,9 @@
   {
     "id": "lesson-002",
     "title": "TODO 微课标题：手位练习",
-    "thumb": "/images/placeholder_lesson.jpg",
+    "thumb": "/images/lessons/lesson-hand-position-01.jpg",
     "clip": "/videos/placeholder.mp4",
     "beats": 8,
     "steps": ["TODO 手位A", "TODO 手位B", "TODO 手位C"]
   }
 ]
-

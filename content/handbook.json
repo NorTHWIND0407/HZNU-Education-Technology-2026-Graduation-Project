@@ -2,7 +2,7 @@
   {
     "id": "chap-01",
     "title": "TODO 章节1：滚灯结构基础",
-    "svg": "/images/placeholder_svg.svg", // TODO: 替换为结构示意 SVG
+    "svg": "/images/handbook/handbook-structure-01.png", // TODO: 替换为结构示意 SVG
     "audio": "/audio/placeholder.mp3",    // TODO: 替换为讲解音频（建议 128kbps）
     "quiz": [
       { "q": "TODO 滚灯的主要部件是？", "a": ["A","B","C","D"], "correct": 1 }
@@ -16,4 +16,3 @@
     ]
   }
 ]
-

@@ -9,9 +9,6 @@ export default function Timeline({ items }: { items: Entry[] }) {
           <time className="mb-1 text-xs text-gray-500">{it.ts || 'TODO 时间节点'}</time>
           <h3 className="text-base font-semibold">{it.title}</h3>
           <p className="text-sm text-gray-700 dark:text-gray-300">{it.desc}</p>
-          {it.media && (
-            <img src={it.media} alt="占位配图 alt // TODO 替换真实图片" className="mt-2 max-h-40 rounded" />
-          )}
         </li>
       ))}
     </ol>
