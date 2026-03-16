@@ -190,6 +190,82 @@ CREATE INDEX idx_ai_qa_user ON ai_qa_history(user_id);
 CREATE INDEX idx_ai_qa_created ON ai_qa_history(created_at);
 
 -- ============================================
+-- 微纪录片评论/点赞表 (Microdoc Comments & Likes)
+-- 存储微纪录片页面评论区内容与点赞计数
+CREATE TABLE microdoc_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  clip_id VARCHAR(80) NOT NULL,                -- 微纪录片视频ID（如 clip-01）
+  user_id INTEGER,                             -- 登录用户ID（匿名可为空）
+  username VARCHAR(80),                        -- 冗余用户名
+  display_name VARCHAR(120) NOT NULL,          -- 显示名称（用户名或游客名）
+  content TEXT NOT NULL,                       -- 评论内容
+  visitor_id VARCHAR(80),                      -- 匿名访客ID
+  is_deleted BOOLEAN DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_microdoc_comments_clip ON microdoc_comments(clip_id);
+CREATE INDEX idx_microdoc_comments_created ON microdoc_comments(created_at);
+
+CREATE TABLE microdoc_likes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  clip_id VARCHAR(80) NOT NULL,                -- 微纪录片视频ID
+  actor_key VARCHAR(120) NOT NULL,             -- 点赞主体唯一键（user:1 / visitor:xxx）
+  user_id INTEGER,                             -- 登录用户ID（匿名可为空）
+  visitor_id VARCHAR(80),                      -- 匿名访客ID
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE(clip_id, actor_key)
+);
+
+CREATE INDEX idx_microdoc_likes_clip ON microdoc_likes(clip_id);
+
+-- ============================================
+-- 课程资源表 (Course Resources)
+-- 存储学科资源项目与上传文件元数据
+CREATE TABLE course_resources (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  resource_key VARCHAR(120) UNIQUE,            -- 系统内置资源键
+  subject VARCHAR(30) NOT NULL,                -- 学科：语文/数学/英语/科学/信息科技/美术/音乐
+  subject_en VARCHAR(80),
+  title VARCHAR(255) NOT NULL,
+  grade VARCHAR(60),
+  summary TEXT,
+  keywords TEXT,                               -- JSON数组
+  is_system BOOLEAN DEFAULT 0,                 -- 是否平台内置资源
+  status VARCHAR(20) DEFAULT 'published' CHECK(status IN ('draft', 'pending', 'published', 'rejected')),
+  created_by INTEGER,                          -- 上传人
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_course_resources_subject ON course_resources(subject);
+CREATE INDEX idx_course_resources_status ON course_resources(status);
+
+CREATE TABLE resource_files (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  resource_id INTEGER NOT NULL,
+  label VARCHAR(255) NOT NULL,
+  type VARCHAR(60) NOT NULL,                   -- 教案/课件/活动单/任务书等
+  format VARCHAR(30),                          -- pdf/docx/txt...
+  preview_url TEXT,                            -- 在线预览链接
+  download_url TEXT,                           -- 下载链接
+  storage_path TEXT,                           -- 服务器存储路径（上传文件）
+  original_name VARCHAR(255),
+  mime_type VARCHAR(120),
+  file_size INTEGER,
+  uploaded_by INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (resource_id) REFERENCES course_resources(id) ON DELETE CASCADE,
+  FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_resource_files_resource ON resource_files(resource_id);
+
+-- ============================================
 -- 统计聚合视图 (Aggregated Statistics Views)
 -- 用于快速查询统计数据
 
@@ -245,15 +321,21 @@ BEGIN
   UPDATE feedbacks SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
+CREATE TRIGGER update_microdoc_comments_timestamp
+AFTER UPDATE ON microdoc_comments
+BEGIN
+  UPDATE microdoc_comments SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
 -- ============================================
 -- 初始化数据 (Sample Data)
 
 -- 插入管理员账户
 INSERT INTO users (username, display_name, role, grade, class_id) VALUES
 ('admin', '系统管理员', 'admin', NULL, NULL),
-('teacher001', '张老师', 'teacher', '美术教师', 'class_3a'),
-('student001', '小明', 'student', '三年级', 'class_3a'),
-('student002', '小红', 'student', '三年级', 'class_3a');
+('t301', 't301', 'teacher', '3年级', 'class_301'),
+('s30101', 's30101', 'student', '3年级', 'class_301'),
+('s30102', 's30102', 'student', '3年级', 'class_301');
 
 -- 插入示例反馈数据
 INSERT INTO feedbacks (
@@ -261,9 +343,9 @@ INSERT INTO feedbacks (
   understanding_score, interest_score, difficulty_score,
   open_comment, rating, status, created_at
 ) VALUES
-(3, 'student', 'lesson', 'class_3a', '三年级', '["lessons", "microdoc"]',
+(3, 'student', 'lesson', 'class_301', '3年级', '["lessons", "microdoc"]',
  4, 5, 3, '我觉得滚灯很有趣，但是有些动作比较难学', 4, 'pending', datetime('now', '-2 days')),
-(4, 'student', 'lesson', 'class_3a', '三年级', '["lessons", "webar"]',
+(4, 'student', 'lesson', 'class_301', '3年级', '["lessons", "webar"]',
  3, 4, 4, '希望能有更多的视频教学', 4, 'pending', datetime('now', '-1 day'));
 
 -- ============================================
@@ -271,7 +353,7 @@ INSERT INTO feedbacks (
 
 -- 1. 获取某个班级的最新反馈
 -- SELECT * FROM feedbacks
--- WHERE class_id = 'class_3a'
+-- WHERE class_id = 'class_301'
 -- ORDER BY created_at DESC LIMIT 10;
 
 -- 2. 统计各模块的平均评分

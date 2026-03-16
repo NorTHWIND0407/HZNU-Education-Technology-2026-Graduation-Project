@@ -7,10 +7,13 @@
 const users = new Map()
 const sessions = new Map()
 const feedbacks = []
+const microdocComments = []
+const microdocLikes = []
 
 let userIdCounter = 1
 let sessionIdCounter = 1
 let feedbackIdCounter = 1
+let microdocCommentIdCounter = 1
 
 // ============================================
 // 数据库初始化
@@ -26,20 +29,20 @@ export function initDB() {
   // 创建示例用户
   const exampleUsers = [
     {
-      username: 'student001',
-      display_name: '小明',
+      username: 's30101',
+      display_name: 's30101',
       role: 'student',
-      grade: '三年级',
-      class_id: 'class_3a',
+      grade: '3年级',
+      class_id: 'class_301',
       school_id: 'linping_primary',
       metadata: '{}'
     },
     {
-      username: 'T001',
-      display_name: '张老师',
+      username: 't301',
+      display_name: 't301',
       role: 'teacher',
-      grade: '三年级',
-      class_id: 'class_3a',
+      grade: '3年级',
+      class_id: 'class_301',
       school_id: 'linping_primary',
       metadata: '{}'
     },
@@ -252,7 +255,8 @@ export const FeedbackDB = {
   },
 
   findById(id) {
-    const feedback = feedbacks.find(f => f.id === id)
+    const numericId = Number(id)
+    const feedback = feedbacks.find(f => f.id === numericId)
     if (!feedback) return null
 
     const user = users.get(feedback.user_id)
@@ -263,8 +267,46 @@ export const FeedbackDB = {
     }
   },
 
+  update(id, updates = {}) {
+    const numericId = Number(id)
+    const feedback = feedbacks.find(f => f.id === numericId)
+    if (!feedback) return { changes: 0 }
+
+    const allowedColumns = [
+      'feedback_type',
+      'class_id',
+      'grade',
+      'modules_used',
+      'lesson_id',
+      'understanding_score',
+      'interest_score',
+      'difficulty_score',
+      'difficulty_aspects',
+      'teaching_effectiveness',
+      'student_engagement',
+      'technical_issues',
+      'open_comment',
+      'suggestions',
+      'rating',
+      'tags',
+      'status',
+      'admin_notes'
+    ]
+
+    let changes = 0
+    for (const key of allowedColumns) {
+      if (Object.prototype.hasOwnProperty.call(updates, key)) {
+        feedback[key] = updates[key]
+        changes++
+      }
+    }
+
+    return { changes }
+  },
+
   updateStatus(id, status, reviewedBy = null) {
-    const feedback = feedbacks.find(f => f.id === id)
+    const numericId = Number(id)
+    const feedback = feedbacks.find(f => f.id === numericId)
     if (!feedback) return { changes: 0 }
 
     feedback.status = status
@@ -274,7 +316,8 @@ export const FeedbackDB = {
   },
 
   delete(id) {
-    const index = feedbacks.findIndex(f => f.id === id)
+    const numericId = Number(id)
+    const index = feedbacks.findIndex(f => f.id === numericId)
     if (index === -1) return { changes: 0 }
 
     feedbacks.splice(index, 1)
@@ -430,4 +473,87 @@ export const ProgressDB = {
   }
 }
 
-export default { getDB, initDB, closeDB, UserDB, SessionDB, FeedbackDB, StatsDB, ProgressDB }
+// ============================================
+// 微纪录片评论/点赞相关操作
+// ============================================
+
+function mapMicrodocComment(comment) {
+  return {
+    id: comment.id,
+    clipId: comment.clip_id,
+    userId: comment.user_id,
+    username: comment.username || '',
+    displayName: comment.display_name || '游客',
+    content: comment.content || '',
+    createdAt: comment.created_at,
+    updatedAt: comment.updated_at
+  }
+}
+
+export const MicrodocDB = {
+  listComments(clipId, limit = 100) {
+    return microdocComments
+      .filter(item => item.clip_id === clipId && !item.is_deleted)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, Number(limit))
+      .map(mapMicrodocComment)
+  },
+
+  createComment(commentData) {
+    const id = microdocCommentIdCounter++
+    const now = new Date().toISOString()
+    microdocComments.push({
+      id,
+      clip_id: commentData.clip_id,
+      user_id: commentData.user_id ?? null,
+      username: commentData.username ?? null,
+      display_name: commentData.display_name,
+      content: commentData.content,
+      visitor_id: commentData.visitor_id ?? null,
+      is_deleted: 0,
+      created_at: now,
+      updated_at: now
+    })
+    return { lastInsertRowid: id, changes: 1 }
+  },
+
+  findCommentById(id) {
+    const numericId = Number(id)
+    const item = microdocComments.find(comment => comment.id === numericId)
+    if (!item) return null
+    return mapMicrodocComment(item)
+  },
+
+  countLikes(clipId) {
+    return microdocLikes.filter(item => item.clip_id === clipId).length
+  },
+
+  hasLiked(clipId, actorKey) {
+    return microdocLikes.some(item => item.clip_id === clipId && item.actor_key === actorKey)
+  },
+
+  toggleLike({ clipId, actorKey, userId = null, visitorId = null }) {
+    const index = microdocLikes.findIndex(item => item.clip_id === clipId && item.actor_key === actorKey)
+
+    let liked = false
+    if (index >= 0) {
+      microdocLikes.splice(index, 1)
+    } else {
+      microdocLikes.push({
+        clip_id: clipId,
+        actor_key: actorKey,
+        user_id: userId,
+        visitor_id: visitorId,
+        created_at: new Date().toISOString()
+      })
+      liked = true
+    }
+
+    return {
+      liked,
+      likeCount: this.countLikes(clipId)
+    }
+  }
+}
+
+export default { getDB, initDB, closeDB, UserDB, SessionDB, FeedbackDB, StatsDB, ProgressDB, MicrodocDB }

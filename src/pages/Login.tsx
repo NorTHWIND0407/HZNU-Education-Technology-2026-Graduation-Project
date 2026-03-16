@@ -24,6 +24,7 @@ export default function Login() {
   const { login, isLoading, error, clearError } = useAuthStore()
 
   const [username, setUsername] = React.useState('')
+  const [password, setPassword] = React.useState('')
   const [showHelper, setShowHelper] = React.useState(false)
 
   // 清除错误
@@ -35,12 +36,12 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!username.trim()) {
+    if (!username.trim() || !password.trim()) {
       return
     }
 
     try {
-      await login(username.trim())
+      await login(username.trim(), password.trim())
 
       // 登录成功，跳转到之前的页面或首页
       const from = (location.state as LoginLocationState | null)?.from?.pathname || '/'
@@ -54,11 +55,13 @@ export default function Login() {
   // 快速登录示例
   const quickLogin = (role: 'student' | 'teacher' | 'admin') => {
     const usernames = {
-      student: 'student001',
-      teacher: 'T001',
+      student: 's30101',
+      teacher: 't301',
       admin: 'admin'
     }
-    setUsername(usernames[role])
+    const account = usernames[role]
+    setUsername(account)
+    setPassword(account)
   }
 
   return (
@@ -99,27 +102,40 @@ export default function Login() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-ink-700 dark:text-gray-300 mb-2">
-                {lang === 'zh' ? '学号 / 工号' : 'Student ID / Teacher ID'}
+                {lang === 'zh' ? '账号' : 'Account'}
               </label>
               <input
                 id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder={lang === 'zh' ? '请输入学号或工号' : 'Enter your ID'}
+                placeholder={lang === 'zh' ? '请输入账号（如 s30101 / t301 / admin）' : 'Enter account'}
                 className="input text-lg"
                 disabled={isLoading}
                 autoFocus
                 required
               />
-              <p className="mt-2 text-xs text-ink-500 dark:text-gray-500">
-                {lang === 'zh' ? '首次登录将自动创建账户' : 'First login will create account automatically'}
-              </p>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-ink-700 dark:text-gray-300 mb-2">
+                {lang === 'zh' ? '密码' : 'Password'}
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={lang === 'zh' ? '请输入密码' : 'Enter password'}
+                className="input text-lg"
+                disabled={isLoading}
+                required
+              />
             </div>
 
             <button
               type="submit"
-              disabled={isLoading || !username.trim()}
+              disabled={isLoading || !username.trim() || !password.trim()}
               className="btn w-full !py-3 text-lg"
             >
               {isLoading ? (
@@ -154,8 +170,8 @@ export default function Login() {
               </p>
               <div className="space-y-2">
                 {[
-                  { role: 'student' as const, id: 'student001', label: lang === 'zh' ? '学生账号' : 'Student' },
-                  { role: 'teacher' as const, id: 'T001', label: lang === 'zh' ? '教师账号' : 'Teacher' },
+                  { role: 'student' as const, id: 's30101', label: lang === 'zh' ? '学生账号' : 'Student' },
+                  { role: 'teacher' as const, id: 't301', label: lang === 'zh' ? '教师账号' : 'Teacher' },
                   { role: 'admin' as const, id: 'admin', label: lang === 'zh' ? '管理员' : 'Admin' }
                 ].map(({ role, id, label }) => (
                   <button
@@ -177,8 +193,8 @@ export default function Login() {
               </div>
               <p className="mt-3 text-xs text-ink-600 dark:text-gray-400">
                 {lang === 'zh'
-                  ? '提示：学号以字母开头自动识别为教师，其他为学生'
-                  : 'Tip: IDs starting with letters are teachers, others are students'}
+                  ? '规则：学生 s+年级(3-9)+班级(01-10)+学号(01-45)（示例 s30101，学生账号与密码相同）；教师 t+年级+班级（示例 t301）；管理员 admin。'
+                  : 'Rule: student s+class+number; teacher t+class; admin is admin.'}
               </p>
             </div>
           )}
@@ -186,11 +202,14 @@ export default function Login() {
 
         {/* 底部说明 */}
         <div className="mt-6 text-center text-sm text-ink-600 dark:text-gray-400">
-          <p>{lang === 'zh' ? '首次使用将自动创建您的账户' : 'Your account will be created on first use'}</p>
+          <p>{lang === 'zh' ? '首次使用将自动创建账户档案' : 'Your profile will be created on first use'}</p>
+          <p className="mt-2 text-xs">
+            {lang === 'zh' ? '登录后默认姓名为账号，可在右上角菜单修改为真实姓名' : 'Display name defaults to account and can be changed in the user menu'}
+          </p>
           <p className="mt-2 text-xs">
             {lang === 'zh'
-              ? '本系统采用轻量级登录，无需设置密码'
-              : 'Lightweight login system, no password required'}
+              ? '系统仅做登录校验，不保存账号密码'
+              : 'The system validates login only and does not store passwords'}
           </p>
         </div>
 

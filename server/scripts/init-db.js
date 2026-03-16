@@ -16,8 +16,8 @@ async function main() {
     console.log('✓ SQLite数据库初始化完成')
 
     console.log('\n预设账号:')
-    console.log('  - student001 (学生)')
-    console.log('  - T001 (教师)')
+    console.log('  - s30101 (学生)')
+    console.log('  - t301 (教师)')
     console.log('  - admin (管理员)')
 
     console.log('\n' + '='.repeat(50))

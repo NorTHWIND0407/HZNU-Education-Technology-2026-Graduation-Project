@@ -15,16 +15,16 @@ async function main() {
       process.exit(0)
     }
 
-    const student1 = UserDB.findByUsername('student001')
-    let student2 = UserDB.findByUsername('student002')
+    const student1 = UserDB.findByUsername('s30101')
+    let student2 = UserDB.findByUsername('s30102')
 
     if (!student2) {
       const created = UserDB.create({
-        username: 'student002',
-        display_name: '小红',
+        username: 's30102',
+        display_name: 's30102',
         role: 'student',
-        grade: '三年级',
-        class_id: 'class_3a',
+        grade: '3年级',
+        class_id: 'class_301',
         school_id: 'linping_primary',
         metadata: '{}'
       })
@@ -39,8 +39,8 @@ async function main() {
       user_id: student1.id,
       role: 'student',
       feedback_type: 'lesson',
-      class_id: 'class_3a',
-      grade: '三年级',
+      class_id: 'class_301',
+      grade: '3年级',
       modules_used: '["lessons", "microdoc"]',
       lesson_id: null,
       understanding_score: 4,
@@ -61,8 +61,8 @@ async function main() {
       user_id: student2.id,
       role: 'student',
       feedback_type: 'lesson',
-      class_id: 'class_3a',
-      grade: '三年级',
+      class_id: 'class_301',
+      grade: '3年级',
       modules_used: '["lessons", "webar"]',
       lesson_id: null,
       understanding_score: 3,

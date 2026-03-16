@@ -17,6 +17,8 @@ import authRoutes from './routes/auth.js'
 import feedbackRoutes from './routes/feedback.js'
 import statsRoutes from './routes/stats.js'
 import userRoutes from './routes/users.js'
+import resourceRoutes from './routes/resources.js'
+import microdocRoutes from './routes/microdoc.js'
 
 // 加载环境变量
 dotenv.config()
@@ -29,7 +31,10 @@ const PORT = process.env.PORT || 3001
 // ============================================
 
 // 安全头部
-app.use(helmet())
+app.use(helmet({
+  frameguard: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}))
 
 // CORS配置
 app.use(cors({
@@ -67,8 +72,10 @@ app.get('/', (req, res) => {
     endpoints: {
       auth: '/api/auth',
       feedback: '/api/feedback',
+      microdoc: '/api/microdoc',
       stats: '/api/stats',
-      users: '/api/users'
+      users: '/api/users',
+      resources: '/api/resources'
     }
   })
 })
@@ -76,8 +83,10 @@ app.get('/', (req, res) => {
 // API路由
 app.use('/api/auth', authRoutes)
 app.use('/api/feedback', feedbackRoutes)
+app.use('/api/microdoc', microdocRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/resources', resourceRoutes)
 
 // 404处理
 app.use((req, res) => {

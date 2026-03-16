@@ -177,13 +177,18 @@ export default function Feedback() {
   const [feedbacks, setFeedbacks] = React.useState<FeedbackRecord[]>([])
   const [statusFilter, setStatusFilter] = React.useState('')
   const [typeFilter, setTypeFilter] = React.useState('')
+  const [classFilter, setClassFilter] = React.useState('')
   const [isLoading, setIsLoading] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isExporting, setIsExporting] = React.useState(false)
+  const [actionFeedbackId, setActionFeedbackId] = React.useState<number | null>(null)
   const [error, setError] = React.useState('')
   const [success, setSuccess] = React.useState('')
 
   const canExport = user?.role === 'teacher' || user?.role === 'admin'
+  const canManage = user?.role === 'teacher' || user?.role === 'admin'
+  const canSelfManage = user?.role === 'student'
+  const canShowActions = canManage || canSelfManage
 
   React.useEffect(() => {
     if (!user) return
@@ -194,6 +199,15 @@ export default function Feedback() {
     }))
   }, [user])
 
+  React.useEffect(() => {
+    if (!user) return
+    if (user.role === 'teacher') {
+      setClassFilter(user.classId || '')
+      return
+    }
+    setClassFilter('')
+  }, [user])
+
   const loadFeedbacks = React.useCallback(async () => {
     setIsLoading(true)
     setError('')
@@ -202,10 +216,17 @@ export default function Feedback() {
         limit: number
         status?: string
         feedback_type?: string
+        class_id?: string
       } = { limit: 500 }
 
       if (statusFilter) params.status = statusFilter
       if (typeFilter) params.feedback_type = typeFilter
+      if (user?.role === 'teacher' && user.classId) {
+        params.class_id = user.classId
+      }
+      if (user?.role === 'admin' && classFilter.trim()) {
+        params.class_id = classFilter.trim()
+      }
 
       const list = await feedbackAPI.list(params)
       setFeedbacks((list as BackendFeedback[]).map(normalizeFeedback))
@@ -214,7 +235,7 @@ export default function Feedback() {
     } finally {
       setIsLoading(false)
     }
-  }, [statusFilter, typeFilter])
+  }, [statusFilter, typeFilter, classFilter, user])
 
   React.useEffect(() => {
     if (!user) return
@@ -339,13 +360,75 @@ export default function Feedback() {
     }
   }
 
+  async function updateStatus(id: number, status: string) {
+    if (!canManage) return
+    setActionFeedbackId(id)
+    setError('')
+    setSuccess('')
+    try {
+      await feedbackAPI.updateStatus(id, status)
+      setSuccess('状态已更新')
+      await loadFeedbacks()
+    } catch (err) {
+      setError((err as Error).message || '更新状态失败')
+    } finally {
+      setActionFeedbackId(null)
+    }
+  }
+
+  async function quickEdit(item: FeedbackRecord) {
+    if (!canShowActions) return
+    const ratingInput = window.prompt('请输入评分（1-5）', String(item.rating || 4))
+    if (ratingInput == null) return
+    const rating = Number(ratingInput)
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      setError('评分必须在 1 到 5 之间')
+      return
+    }
+    const openComment = window.prompt('请输入意见反馈（可留空）', item.openComment || '')
+    if (openComment == null) return
+
+    setActionFeedbackId(item.id)
+    setError('')
+    setSuccess('')
+    try {
+      await feedbackAPI.update(item.id, { rating, openComment })
+      setSuccess('反馈已修改')
+      await loadFeedbacks()
+    } catch (err) {
+      setError((err as Error).message || '修改失败')
+    } finally {
+      setActionFeedbackId(null)
+    }
+  }
+
+  async function deleteFeedback(id: number) {
+    if (!canShowActions) return
+    const actionText = canSelfManage ? '撤回' : '删除'
+    const confirmed = window.confirm(`确认${actionText}这条反馈吗？此操作不可恢复。`)
+    if (!confirmed) return
+
+    setActionFeedbackId(id)
+    setError('')
+    setSuccess('')
+    try {
+      await feedbackAPI.delete(id)
+      setSuccess(canSelfManage ? '反馈已撤回' : '反馈已删除')
+      await loadFeedbacks()
+    } catch (err) {
+      setError((err as Error).message || '删除失败')
+    } finally {
+      setActionFeedbackId(null)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <header className="card p-4">
         <h1 className="text-xl font-semibold">课堂反馈与数据可视化</h1>
         <p className="text-sm text-gray-500 mt-1">
           {user?.role === 'student'
-            ? '你提交后可查看自己的反馈记录。'
+            ? '你提交后可查看、修改和撤回自己的反馈记录。'
             : user?.role === 'teacher'
               ? '你可以查看本班反馈并导出 CSV。'
               : '你可以查看反馈并按班级导出 CSV。'}
@@ -372,7 +455,7 @@ export default function Feedback() {
               className="w-full border rounded px-2 py-1 bg-transparent"
               value={form.classId}
               onChange={e => setForm({ ...form, classId: e.target.value })}
-              placeholder="例如：class_3a"
+              placeholder="例如：class_301"
             />
           </label>
 
@@ -528,6 +611,18 @@ export default function Feedback() {
               ))}
             </select>
           </label>
+          {(user?.role === 'teacher' || user?.role === 'admin') && (
+            <label className="text-sm">
+              班级
+              <input
+                className="ml-2 border rounded px-2 py-1 bg-transparent"
+                value={classFilter}
+                onChange={e => setClassFilter(e.target.value)}
+                placeholder="例如：class_301"
+                readOnly={user?.role === 'teacher'}
+              />
+            </label>
+          )}
           <span className="text-sm text-gray-500">共 {feedbacks.length} 条</span>
         </div>
 
@@ -543,6 +638,7 @@ export default function Feedback() {
                 <th className="py-2 pr-3">兴趣</th>
                 <th className="py-2 pr-3">状态</th>
                 <th className="py-2 pr-3">意见</th>
+                {canShowActions && <th className="py-2 pr-3">操作</th>}
               </tr>
             </thead>
             <tbody>
@@ -554,13 +650,51 @@ export default function Feedback() {
                   <td className="py-2 pr-3">{item.rating || '-'}</td>
                   <td className="py-2 pr-3">{item.understandingScore || '-'}</td>
                   <td className="py-2 pr-3">{item.interestScore || '-'}</td>
-                  <td className="py-2 pr-3">{item.status}</td>
+                  <td className="py-2 pr-3">
+                    {canManage ? (
+                      <select
+                        className="border rounded px-1 py-0.5 bg-transparent"
+                        value={item.status}
+                        disabled={actionFeedbackId === item.id}
+                        onChange={e => updateStatus(item.id, e.target.value)}
+                      >
+                        <option value="pending">pending</option>
+                        <option value="reviewed">reviewed</option>
+                        <option value="resolved">resolved</option>
+                        <option value="archived">archived</option>
+                      </select>
+                    ) : (
+                      item.status
+                    )}
+                  </td>
                   <td className="py-2 pr-3 max-w-xs">{item.openComment || item.suggestions || '-'}</td>
+                  {canShowActions && (
+                    <td className="py-2 pr-3 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="btn !py-1 !px-2 text-xs"
+                          onClick={() => quickEdit(item)}
+                          disabled={actionFeedbackId === item.id}
+                        >
+                          修改
+                        </button>
+                        <button
+                          type="button"
+                          className="btn !py-1 !px-2 text-xs"
+                          onClick={() => deleteFeedback(item.id)}
+                          disabled={actionFeedbackId === item.id}
+                        >
+                          {canSelfManage ? '撤回' : '删除'}
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
               {feedbacks.length === 0 && (
                 <tr>
-                  <td className="py-4 text-gray-500" colSpan={8}>暂无反馈数据</td>
+                  <td className="py-4 text-gray-500" colSpan={canShowActions ? 9 : 8}>暂无反馈数据</td>
                 </tr>
               )}
             </tbody>

@@ -14,7 +14,7 @@ interface AuthState {
   error: string | null
 
   // 操作
-  login: (username: string) => Promise<void>
+  login: (username: string, password: string) => Promise<void>
   logout: () => Promise<void>
   checkAuth: () => Promise<void>
   clearError: () => void
@@ -29,11 +29,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   // 登录
-  login: async (username: string) => {
+  login: async (username: string, password: string) => {
     set({ isLoading: true, error: null })
 
     try {
-      const response = await authAPI.login(username)
+      const response = await authAPI.login(username, password)
 
       set({
         user: response.user,

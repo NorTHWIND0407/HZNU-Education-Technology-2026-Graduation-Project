@@ -1,15 +1,17 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAppStore } from '../lib/store'
 import { useAuthStore } from '../lib/authStore'
+import { userAPI } from '../lib/apiClient'
 import { t } from '../lib/i18n'
 import React from 'react'
 
 export default function Nav() {
   const navigate = useNavigate()
   const { theme, toggleTheme, lang, toggleLang } = useAppStore()
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const { user, isAuthenticated, logout, updateUser } = useAuthStore()
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const [userMenuOpen, setUserMenuOpen] = React.useState(false)
+  const [isUpdatingName, setIsUpdatingName] = React.useState(false)
 
   const navItems = [
     { to: '/', label: 'nav_home' },
@@ -135,6 +137,37 @@ export default function Nav() {
                         {user.grade && <span className="text-xs text-ink-600 dark:text-gray-400">{user.grade}</span>}
                       </div>
                     </div>
+                    <button
+                      onClick={async () => {
+                        if (!user || isUpdatingName) return
+                        const name = window.prompt(
+                          lang === 'zh' ? '请输入你的姓名（2-20字）' : 'Enter your name (2-20 chars)',
+                          user.displayName === user.username ? '' : user.displayName
+                        )
+                        if (name == null) return
+                        const trimmed = name.trim()
+                        if (trimmed.length < 2 || trimmed.length > 20) {
+                          window.alert(lang === 'zh' ? '姓名长度应为 2-20 个字符' : 'Name must be 2-20 characters')
+                          return
+                        }
+
+                        setIsUpdatingName(true)
+                        try {
+                          const updated = await userAPI.update(user.id, { displayName: trimmed })
+                          updateUser({ displayName: updated.displayName || trimmed })
+                        } catch (err) {
+                          window.alert((err as Error).message || (lang === 'zh' ? '修改姓名失败' : 'Failed to update name'))
+                        } finally {
+                          setIsUpdatingName(false)
+                        }
+                      }}
+                      className="w-full mb-2 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-ink-700 dark:text-gray-200 hover:bg-gold-50 dark:hover:bg-gold-900/20 transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5h2m-1 0v14m7-7H5" />
+                      </svg>
+                      {isUpdatingName ? (lang === 'zh' ? '修改中...' : 'Updating...') : (lang === 'zh' ? '修改姓名' : 'Change Name')}
+                    </button>
                     <button
                       onClick={async () => {
                         setUserMenuOpen(false)

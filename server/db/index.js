@@ -14,6 +14,17 @@ const serverRoot = join(__dirname, '..')
 const configuredPath = process.env.DATABASE_PATH || './data/feedback.db'
 const DB_PATH = isAbsolute(configuredPath) ? configuredPath : resolve(serverRoot, configuredPath)
 const SCHEMA_PATH = join(serverRoot, '../database-schema.sql')
+const SUBJECT_CATALOG = ['语文', '数学', '英语', '科学', '信息科技', '美术', '音乐']
+const SYSTEM_IT_RESOURCE_KEY = 'it-rolling-lantern-system'
+const SUBJECT_EN_MAP = {
+  语文: 'Chinese Language',
+  数学: 'Mathematics',
+  英语: 'English',
+  科学: 'Science',
+  信息科技: 'Information Technology',
+  美术: 'Art',
+  音乐: 'Music'
+}
 
 let SQLRuntime = null
 let db = null
@@ -76,6 +87,15 @@ function normalizeNullable(value) {
   return value
 }
 
+function safeParseJSON(value, fallback) {
+  if (!value) return fallback
+  try {
+    return JSON.parse(value)
+  } catch {
+    return fallback
+  }
+}
+
 function isExpired(isoOrDateTimeText) {
   const ts = new Date(isoOrDateTimeText).getTime()
   if (Number.isNaN(ts)) return true
@@ -85,8 +105,8 @@ function isExpired(isoOrDateTimeText) {
 function seedDefaultUsers() {
   const defaults = [
     ['admin', '管理员', 'admin', null, null, 'linping_primary'],
-    ['T001', '张老师', 'teacher', '三年级', 'class_3a', 'linping_primary'],
-    ['student001', '小明', 'student', '三年级', 'class_3a', 'linping_primary']
+    ['t301', 't301', 'teacher', '3年级', 'class_301', 'linping_primary'],
+    ['s30101', 's30101', 'student', '3年级', 'class_301', 'linping_primary']
   ]
 
   for (const [username, displayName, role, grade, classId, schoolId] of defaults) {
@@ -95,6 +115,161 @@ function seedDefaultUsers() {
         (username, display_name, role, grade, class_id, school_id, metadata)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [username, displayName, role, grade, classId, schoolId, '{}']
+    )
+  }
+}
+
+function ensureMicrodocSchema() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS microdoc_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clip_id VARCHAR(80) NOT NULL,
+      user_id INTEGER,
+      username VARCHAR(80),
+      display_name VARCHAR(120) NOT NULL,
+      content TEXT NOT NULL,
+      visitor_id VARCHAR(80),
+      is_deleted BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS microdoc_likes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clip_id VARCHAR(80) NOT NULL,
+      actor_key VARCHAR(120) NOT NULL,
+      user_id INTEGER,
+      visitor_id VARCHAR(80),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+      UNIQUE(clip_id, actor_key)
+    );
+  `)
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_microdoc_comments_clip ON microdoc_comments(clip_id)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_microdoc_comments_created ON microdoc_comments(created_at)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_microdoc_likes_clip ON microdoc_likes(clip_id)')
+
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS update_microdoc_comments_timestamp
+    AFTER UPDATE ON microdoc_comments
+    BEGIN
+      UPDATE microdoc_comments SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    END;
+  `)
+  persistDB()
+}
+
+function ensureResourceSchema() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS course_resources (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      resource_key VARCHAR(120) UNIQUE,
+      subject VARCHAR(30) NOT NULL,
+      subject_en VARCHAR(80),
+      title VARCHAR(255) NOT NULL,
+      grade VARCHAR(60),
+      summary TEXT,
+      keywords TEXT,
+      is_system BOOLEAN DEFAULT 0,
+      status VARCHAR(20) DEFAULT 'published' CHECK(status IN ('draft', 'pending', 'published', 'rejected')),
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `)
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS resource_files (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      resource_id INTEGER NOT NULL,
+      label VARCHAR(255) NOT NULL,
+      type VARCHAR(60) NOT NULL,
+      format VARCHAR(30),
+      preview_url TEXT,
+      download_url TEXT,
+      storage_path TEXT,
+      original_name VARCHAR(255),
+      mime_type VARCHAR(120),
+      file_size INTEGER,
+      uploaded_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (resource_id) REFERENCES course_resources(id) ON DELETE CASCADE,
+      FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+  `)
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_course_resources_subject ON course_resources(subject)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_course_resources_status ON course_resources(status)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_resource_files_resource ON resource_files(resource_id)')
+  persistDB()
+}
+
+function seedSystemResources() {
+  const existing = queryGet('SELECT id FROM course_resources WHERE resource_key = ?', [SYSTEM_IT_RESOURCE_KEY])
+  let resourceId = Number(existing?.id || 0)
+
+  if (!resourceId) {
+    const result = run(
+      `INSERT INTO course_resources
+        (resource_key, subject, subject_en, title, grade, summary, keywords, is_system, status, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'published', NULL)`,
+      [
+        SYSTEM_IT_RESOURCE_KEY,
+        '信息科技',
+        'Information Technology',
+        '信息科技学科示例：临平滚灯数字展示任务',
+        '五-六年级',
+        '围绕临平滚灯完成信息收集、素材整理、页面结构设计与数字化展示，形成可复用的信息科技学科任务模板。',
+        JSON.stringify(['信息科技', '网页设计', '数字展示', '临平滚灯'])
+      ]
+    )
+    resourceId = result.lastInsertRowid
+  }
+
+  const hasFile = queryGet('SELECT id FROM resource_files WHERE resource_id = ?', [resourceId])
+  if (!hasFile) {
+    run(
+      `INSERT INTO resource_files
+        (resource_id, label, type, format, preview_url, download_url, storage_path, original_name, mime_type, file_size, uploaded_by)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, NULL, NULL)`,
+      [
+        resourceId,
+        '信息任务书：滚灯数字展示页（TXT）',
+        '任务书',
+        'txt',
+        '/resources/info-rolling-lantern-task.txt',
+        '/resources/info-rolling-lantern-task.txt',
+        'info-rolling-lantern-task.txt',
+        'text/plain'
+      ]
+    )
+  }
+}
+
+function seedSubjectPlaceholders() {
+  const placeholderSubjects = SUBJECT_CATALOG.filter(subject => subject !== '信息科技')
+  for (const subject of placeholderSubjects) {
+    const resourceKey = `placeholder-${subject}`
+    const exists = queryGet('SELECT id FROM course_resources WHERE resource_key = ?', [resourceKey])
+    if (exists) continue
+
+    run(
+      `INSERT INTO course_resources
+        (resource_key, subject, subject_en, title, grade, summary, keywords, is_system, status, created_by)
+       VALUES (?, ?, ?, ?, NULL, ?, ?, 0, 'published', NULL)`,
+      [
+        resourceKey,
+        subject,
+        SUBJECT_EN_MAP[subject] || null,
+        `${subject}学科`,
+        `当前为${subject}学科入口，可由教师上传与临平滚灯相关的教案与课件资源。`,
+        JSON.stringify([subject, '临平滚灯', '学科融合'])
+      ]
     )
   }
 }
@@ -119,6 +294,12 @@ export async function initDB() {
 
   // 首次或升级后兜底写入示例账号（避免前端示例账号无班级）
   seedDefaultUsers()
+  // 微纪录片评论/点赞 schema 迁移
+  ensureMicrodocSchema()
+  // 资源模块 schema 迁移与系统资源初始化
+  ensureResourceSchema()
+  seedSystemResources()
+  seedSubjectPlaceholders()
   return db
 }
 
@@ -349,6 +530,44 @@ export const FeedbackDB = {
     )
   },
 
+  update(id, updates = {}) {
+    const allowedColumns = [
+      'feedback_type',
+      'class_id',
+      'grade',
+      'modules_used',
+      'lesson_id',
+      'understanding_score',
+      'interest_score',
+      'difficulty_score',
+      'difficulty_aspects',
+      'teaching_effectiveness',
+      'student_engagement',
+      'technical_issues',
+      'open_comment',
+      'suggestions',
+      'rating',
+      'tags',
+      'status',
+      'admin_notes'
+    ]
+
+    const sets = []
+    const params = []
+
+    for (const key of allowedColumns) {
+      if (Object.prototype.hasOwnProperty.call(updates, key)) {
+        sets.push(`${key} = ?`)
+        params.push(normalizeNullable(updates[key]))
+      }
+    }
+
+    if (!sets.length) return { changes: 0 }
+
+    params.push(Number(id))
+    return run(`UPDATE feedbacks SET ${sets.join(', ')} WHERE id = ?`, params)
+  },
+
   updateStatus(id, status, reviewedBy = null) {
     return run(
       `UPDATE feedbacks
@@ -477,4 +696,266 @@ export const ProgressDB = {
   }
 }
 
-export default { getDB, initDB, closeDB, UserDB, SessionDB, FeedbackDB, StatsDB, ProgressDB }
+// ============================================
+// 微纪录片评论/点赞相关操作
+// ============================================
+
+function normalizeMicrodocComment(row) {
+  if (!row) return null
+  return {
+    id: Number(row.id),
+    clipId: row.clip_id,
+    userId: row.user_id != null ? Number(row.user_id) : null,
+    username: row.username || '',
+    displayName: row.display_name || '游客',
+    content: row.content || '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }
+}
+
+export const MicrodocDB = {
+  listComments(clipId, limit = 100) {
+    const rows = queryAll(
+      `SELECT id, clip_id, user_id, username, display_name, content, created_at, updated_at
+       FROM microdoc_comments
+       WHERE clip_id = ? AND is_deleted = 0
+       ORDER BY created_at DESC
+       LIMIT ?`,
+      [clipId, Number(limit)]
+    )
+    return rows.map(normalizeMicrodocComment)
+  },
+
+  createComment(commentData) {
+    return run(
+      `INSERT INTO microdoc_comments
+        (clip_id, user_id, username, display_name, content, visitor_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        commentData.clip_id,
+        normalizeNullable(commentData.user_id),
+        normalizeNullable(commentData.username),
+        commentData.display_name,
+        commentData.content,
+        normalizeNullable(commentData.visitor_id)
+      ]
+    )
+  },
+
+  findCommentById(id) {
+    const row = queryGet(
+      `SELECT id, clip_id, user_id, username, display_name, content, created_at, updated_at
+       FROM microdoc_comments
+       WHERE id = ?`,
+      [Number(id)]
+    )
+    return normalizeMicrodocComment(row)
+  },
+
+  countLikes(clipId) {
+    const row = queryGet('SELECT COUNT(*) AS count FROM microdoc_likes WHERE clip_id = ?', [clipId])
+    return Number(row?.count || 0)
+  },
+
+  hasLiked(clipId, actorKey) {
+    const row = queryGet(
+      'SELECT id FROM microdoc_likes WHERE clip_id = ? AND actor_key = ?',
+      [clipId, actorKey]
+    )
+    return Boolean(row?.id)
+  },
+
+  toggleLike({ clipId, actorKey, userId = null, visitorId = null }) {
+    const existing = queryGet(
+      'SELECT id FROM microdoc_likes WHERE clip_id = ? AND actor_key = ?',
+      [clipId, actorKey]
+    )
+
+    let liked = false
+    if (existing?.id) {
+      run('DELETE FROM microdoc_likes WHERE id = ?', [Number(existing.id)])
+    } else {
+      run(
+        `INSERT INTO microdoc_likes (clip_id, actor_key, user_id, visitor_id)
+         VALUES (?, ?, ?, ?)`,
+        [clipId, actorKey, normalizeNullable(userId), normalizeNullable(visitorId)]
+      )
+      liked = true
+    }
+
+    return {
+      liked,
+      likeCount: this.countLikes(clipId)
+    }
+  }
+}
+
+// ============================================
+// 课程资源相关操作
+// ============================================
+
+function mapResourcesWithFiles(resourceRows, fileRows) {
+  const filesByResourceId = new Map()
+  for (const file of fileRows) {
+    const resourceId = Number(file.resource_id)
+    if (!filesByResourceId.has(resourceId)) {
+      filesByResourceId.set(resourceId, [])
+    }
+    filesByResourceId.get(resourceId).push({
+      id: `file-${file.id}`,
+      fileDbId: Number(file.id),
+      label: file.label,
+      type: file.type,
+      format: file.format || undefined,
+      previewUrl: file.preview_url || undefined,
+      downloadUrl: file.download_url || '',
+      originalName: file.original_name || undefined,
+      mimeType: file.mime_type || undefined,
+      fileSize: file.file_size != null ? Number(file.file_size) : undefined
+    })
+  }
+
+  return resourceRows.map(row => {
+    const dbId = Number(row.id)
+    return {
+      id: row.resource_key || `resource-${dbId}`,
+      resourceDbId: dbId,
+      subject: row.subject,
+      subjectEn: row.subject_en || undefined,
+      title: row.title,
+      grade: row.grade || undefined,
+      summary: row.summary || undefined,
+      keywords: safeParseJSON(row.keywords, []),
+      status: row.status,
+      isSystem: Boolean(Number(row.is_system || 0)),
+      createdBy: row.created_by != null ? Number(row.created_by) : undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      files: filesByResourceId.get(dbId) || []
+    }
+  })
+}
+
+export const ResourceDB = {
+  subjectCatalog() {
+    return [...SUBJECT_CATALOG]
+  },
+
+  isValidSubject(subject) {
+    return SUBJECT_CATALOG.includes(subject)
+  },
+
+  list(filters = {}) {
+    let sql = 'SELECT * FROM course_resources WHERE 1=1'
+    const params = []
+
+    if (filters.subject) {
+      sql += ' AND subject = ?'
+      params.push(filters.subject)
+    }
+    if (filters.status) {
+      sql += ' AND status = ?'
+      params.push(filters.status)
+    }
+    if (filters.createdBy) {
+      sql += ' AND created_by = ?'
+      params.push(Number(filters.createdBy))
+    }
+    if (filters.excludeSystem) {
+      sql += ' AND is_system = 0'
+    }
+
+    sql += ' ORDER BY is_system DESC, created_at DESC'
+    const resources = queryAll(sql, params)
+    if (!resources.length) return []
+
+    const ids = resources.map(item => Number(item.id))
+    const placeholders = ids.map(() => '?').join(', ')
+    const files = queryAll(
+      `SELECT * FROM resource_files WHERE resource_id IN (${placeholders}) ORDER BY created_at DESC`,
+      ids
+    )
+
+    return mapResourcesWithFiles(resources, files)
+  },
+
+  findById(resourceId) {
+    const resources = this.list({}).filter(item => item.resourceDbId === Number(resourceId))
+    return resources[0] || null
+  },
+
+  createProject(data) {
+    const result = run(
+      `INSERT INTO course_resources
+        (resource_key, subject, subject_en, title, grade, summary, keywords, is_system, status, created_by, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      [
+        normalizeNullable(data.resource_key),
+        data.subject,
+        normalizeNullable(data.subject_en),
+        data.title,
+        normalizeNullable(data.grade),
+        normalizeNullable(data.summary),
+        data.keywords ? JSON.stringify(data.keywords) : null,
+        data.is_system ? 1 : 0,
+        data.status || 'published',
+        normalizeNullable(data.created_by)
+      ]
+    )
+    return result.lastInsertRowid
+  },
+
+  addFile(resourceId, fileData) {
+    return run(
+      `INSERT INTO resource_files
+        (resource_id, label, type, format, preview_url, download_url, storage_path, original_name, mime_type, file_size, uploaded_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        Number(resourceId),
+        fileData.label,
+        fileData.type,
+        normalizeNullable(fileData.format),
+        normalizeNullable(fileData.preview_url),
+        normalizeNullable(fileData.download_url),
+        normalizeNullable(fileData.storage_path),
+        normalizeNullable(fileData.original_name),
+        normalizeNullable(fileData.mime_type),
+        normalizeNullable(fileData.file_size),
+        normalizeNullable(fileData.uploaded_by)
+      ]
+    )
+  },
+
+  updateFileLinks(fileId, previewUrl, downloadUrl) {
+    return run(
+      `UPDATE resource_files
+       SET preview_url = ?, download_url = ?
+       WHERE id = ?`,
+      [normalizeNullable(previewUrl), normalizeNullable(downloadUrl), Number(fileId)]
+    )
+  },
+
+  findFileById(fileId) {
+    return queryGet(
+      `SELECT rf.*, cr.status AS resource_status, cr.subject, cr.title
+       FROM resource_files rf
+       JOIN course_resources cr ON rf.resource_id = cr.id
+       WHERE rf.id = ?`,
+      [Number(fileId)]
+    )
+  }
+}
+
+export default {
+  getDB,
+  initDB,
+  closeDB,
+  UserDB,
+  SessionDB,
+  FeedbackDB,
+  StatsDB,
+  ProgressDB,
+  MicrodocDB,
+  ResourceDB
+}

@@ -114,6 +114,72 @@ export interface ChartDataPoint {
   [key: string]: any
 }
 
+export interface MicrodocComment {
+  id: number
+  clipId: string
+  userId: number | null
+  username: string
+  displayName: string
+  content: string
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface MicrodocEngagement {
+  clipId: string
+  likeCount: number
+  likedByMe: boolean
+  comments: MicrodocComment[]
+  commentLoginRequired?: boolean
+}
+
+export interface ResourceFileItem {
+  id: string
+  fileDbId?: number
+  label: string
+  type: string
+  format?: string
+  previewUrl?: string
+  downloadUrl: string
+  originalName?: string
+  mimeType?: string
+  fileSize?: number
+}
+
+export interface CourseResourceItem {
+  id: string
+  resourceDbId?: number
+  subject: string
+  subjectEn?: string
+  title: string
+  grade?: string
+  summary?: string
+  keywords?: string[]
+  status?: string
+  isSystem?: boolean
+  files: ResourceFileItem[]
+}
+
+export interface ResourceUploadPayload {
+  subject: string
+  title: string
+  grade?: string
+  summary?: string
+  keywords?: string[] | string
+  file: File
+  fileLabel?: string
+  fileType?: string
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('文件读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
+
 // ============================================
 // 认证 API
 // ============================================
@@ -122,8 +188,8 @@ export const authAPI = {
   /**
    * 登录/注册
    */
-  async login(username: string): Promise<LoginResponse> {
-    const response = await apiClient.post<any, LoginResponse>('/auth/login', { username })
+  async login(username: string, password: string): Promise<LoginResponse> {
+    const response = await apiClient.post<any, LoginResponse>('/auth/login', { username, password })
 
     if (response.success) {
       // 保存token和用户信息
@@ -200,6 +266,14 @@ export const feedbackAPI = {
   },
 
   /**
+   * 更新反馈（教师/管理员）
+   */
+  async update(id: number, data: Partial<FeedbackData> & { status?: string; adminNotes?: string; classId?: string }): Promise<Feedback> {
+    const response = await apiClient.patch<any, { success: boolean; feedback: Feedback }>(`/feedback/${id}`, data)
+    return response.feedback
+  },
+
+  /**
    * 更新反馈状态
    */
   async updateStatus(id: number, status: string): Promise<Feedback> {
@@ -220,6 +294,39 @@ export const feedbackAPI = {
   async batchSubmit(feedbacks: Array<Partial<FeedbackData> & { userId: number }>): Promise<any> {
     const response = await apiClient.post<any, any>('/feedback/batch', { feedbacks })
     return response
+  }
+}
+
+// ============================================
+// 微纪录片评论区 API
+// ============================================
+
+export const microdocAPI = {
+  async getEngagement(clipId: string, visitorId?: string): Promise<MicrodocEngagement> {
+    const response = await apiClient.get<any, { success: boolean; data: MicrodocEngagement }>(
+      `/microdoc/${encodeURIComponent(clipId)}`,
+      { params: { visitorId } }
+    )
+    return response.data
+  },
+
+  async toggleLike(clipId: string, visitorId?: string): Promise<Pick<MicrodocEngagement, 'clipId' | 'likeCount' | 'likedByMe'>> {
+    const response = await apiClient.post<any, {
+      success: boolean
+      data: Pick<MicrodocEngagement, 'clipId' | 'likeCount' | 'likedByMe'>
+    }>(`/microdoc/${encodeURIComponent(clipId)}/like`, { visitorId })
+    return response.data
+  },
+
+  async createComment(clipId: string, payload: {
+    content: string
+    visitorId?: string
+  }): Promise<{ clipId: string; comment: MicrodocComment }> {
+    const response = await apiClient.post<any, {
+      success: boolean
+      data: { clipId: string; comment: MicrodocComment }
+    }>(`/microdoc/${encodeURIComponent(clipId)}/comments`, payload)
+    return response.data
   }
 }
 
@@ -331,6 +438,40 @@ export const userAPI = {
 }
 
 // ============================================
+// 课程资源 API
+// ============================================
+
+export const resourcesAPI = {
+  async list(params?: { subject?: string }): Promise<{ subjects: string[]; items: CourseResourceItem[] }> {
+    const response = await apiClient.get<any, { success: boolean; subjects: string[]; items: CourseResourceItem[] }>(
+      '/resources',
+      { params }
+    )
+    return { subjects: response.subjects || [], items: response.items || [] }
+  },
+
+  async upload(payload: ResourceUploadPayload): Promise<CourseResourceItem | null> {
+    const fileBase64 = await fileToBase64(payload.file)
+    const response = await apiClient.post<any, { success: boolean; item: CourseResourceItem | null }>(
+      '/resources/upload',
+      {
+        subject: payload.subject,
+        title: payload.title,
+        grade: payload.grade,
+        summary: payload.summary,
+        keywords: payload.keywords,
+        fileBase64,
+        fileName: payload.file.name,
+        mimeType: payload.file.type,
+        fileLabel: payload.fileLabel,
+        fileType: payload.fileType
+      }
+    )
+    return response.item || null
+  }
+}
+
+// ============================================
 // 工具函数
 // ============================================
 
@@ -363,11 +504,23 @@ export function clearAuth(): void {
   localStorage.removeItem('user_info')
 }
 
+/**
+ * 获取实时 WebSocket 地址
+ */
+export function getWebSocketUrl(path: string = '/ws'): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001'
+  const apiUrl = new URL(API_BASE_URL, origin)
+  const protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${apiUrl.host}${path}`
+}
+
 export default {
   auth: authAPI,
   feedback: feedbackAPI,
+  microdoc: microdocAPI,
   stats: statsAPI,
   user: userAPI,
+  resources: resourcesAPI,
   getSavedUser,
   isLoggedIn,
   clearAuth

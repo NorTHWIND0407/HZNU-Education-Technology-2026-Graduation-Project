@@ -1,75 +1,75 @@
 [
   {
-    "id": "chn-rolling-lantern-01",
+    "id": "placeholder-语文",
     "subject": "语文",
     "subjectEn": "Chinese Language",
-    "title": "语文教案示例：课题测试",
-    "grade": "测试年级（示例）",
-    "summary": "此项目作为语文学科的教案示例文件，仅用于演示课程资源中心的展示与在线预览功能。正式使用时，可替换为真实的语文教案与相关课件。",
-    "keywords": ["语文", "教案示例", "课题测试"],
-    "files": [
-      {
-        "id": "plan_test",
-        "label": "语文教案示例：课题测试（PDF）",
-        "type": "教案",
-        "format": "pdf",
-        "previewUrl": "/resources/yuwen-lesson-test.pdf",
-        "downloadUrl": "/resources/yuwen-lesson-test.pdf"
-      }
-    ]
+    "title": "语文学科",
+    "summary": "当前为语文学科入口，可由教师上传与临平滚灯相关的教案与课件资源。",
+    "keywords": ["语文", "临平滚灯", "学科融合"],
+    "files": []
   },
   {
-    "id": "art-rolling-lantern-01",
-    "subject": "美术",
-    "subjectEn": "Art",
-    "title": "TODO 美术项目：滚灯造型与纹样设计",
-    "grade": "TODO 年级学段（例：四年级下）",
-    "summary": "TODO 在美术课中通过平面与立体造型练习，让学生设计属于自己的滚灯纹样，理解对称、色彩和民俗符号的运用。",
-    "keywords": ["TODO 造型", "TODO 色彩搭配", "TODO 民俗纹样"],
-    "files": [
-      {
-        "id": "slides",
-        "label": "TODO 示范课件（滚灯造型步骤）",
-        "type": "课件",
-        "format": "pptx",
-        "previewUrl": "/resources/art-rolling-lantern-01-slides.pdf",
-        "downloadUrl": "/resources/art-rolling-lantern-01-slides.pptx"
-      },
-      {
-        "id": "plan",
-        "label": "TODO 教学设计与学生作品说明",
-        "type": "教案",
-        "format": "pdf",
-        "previewUrl": "/resources/art-rolling-lantern-01-plan.pdf",
-        "downloadUrl": "/resources/art-rolling-lantern-01-plan.pdf"
-      }
-    ]
+    "id": "placeholder-数学",
+    "subject": "数学",
+    "subjectEn": "Mathematics",
+    "title": "数学学科",
+    "summary": "当前为数学学科入口，可由教师上传与临平滚灯相关的教案与课件资源。",
+    "keywords": ["数学", "临平滚灯", "学科融合"],
+    "files": []
   },
   {
-    "id": "science-rolling-lantern-01",
+    "id": "placeholder-英语",
+    "subject": "英语",
+    "subjectEn": "English",
+    "title": "英语学科",
+    "summary": "当前为英语学科入口，可由教师上传与临平滚灯相关的教案与课件资源。",
+    "keywords": ["英语", "临平滚灯", "学科融合"],
+    "files": []
+  },
+  {
+    "id": "placeholder-科学",
     "subject": "科学",
     "subjectEn": "Science",
-    "title": "TODO 科学探究：滚灯的力学与平衡",
-    "grade": "TODO 年级学段（例：五年级上）",
-    "summary": "TODO 结合科学学科，从力学与平衡角度分析滚灯在旋转、翻滚过程中的受力情况，引导学生进行小实验与记录。",
-    "keywords": ["TODO 力学", "TODO 平衡", "TODO 实验记录"],
+    "title": "科学学科",
+    "summary": "当前为科学学科入口，可由教师上传与临平滚灯相关的教案与课件资源。",
+    "keywords": ["科学", "临平滚灯", "学科融合"],
+    "files": []
+  },
+  {
+    "id": "it-rolling-lantern-system",
+    "subject": "信息科技",
+    "subjectEn": "Information Technology",
+    "title": "信息科技学科示例：临平滚灯数字展示任务",
+    "grade": "五-六年级",
+    "summary": "围绕临平滚灯完成信息收集、素材整理、页面结构设计与数字化展示，形成可复用的信息科技学科任务模板。",
+    "keywords": ["信息科技", "网页设计", "数字展示", "临平滚灯"],
     "files": [
       {
-        "id": "worksheet",
-        "label": "TODO 学生活动单与实验记录表",
-        "type": "教案",
-        "format": "pdf",
-        "previewUrl": "/resources/science-rolling-lantern-01-worksheet.pdf",
-        "downloadUrl": "/resources/science-rolling-lantern-01-worksheet.pdf"
-      },
-      {
-        "id": "tool",
-        "label": "TODO 模拟小软件（如节奏/速度调节演示程序）",
-        "type": "小软件",
-        "format": "zip",
-        "downloadUrl": "/resources/science-rolling-lantern-01-tool.zip"
+        "id": "it-task-01",
+        "label": "信息任务书：滚灯数字展示页（TXT）",
+        "type": "任务书",
+        "format": "txt",
+        "previewUrl": "/resources/info-rolling-lantern-task.txt",
+        "downloadUrl": "/resources/info-rolling-lantern-task.txt"
       }
     ]
+  },
+  {
+    "id": "placeholder-美术",
+    "subject": "美术",
+    "subjectEn": "Art",
+    "title": "美术学科",
+    "summary": "当前为美术学科入口，可由教师上传与临平滚灯相关的教案与课件资源。",
+    "keywords": ["美术", "临平滚灯", "学科融合"],
+    "files": []
+  },
+  {
+    "id": "placeholder-音乐",
+    "subject": "音乐",
+    "subjectEn": "Music",
+    "title": "音乐学科",
+    "summary": "当前为音乐学科入口，可由教师上传与临平滚灯相关的教案与课件资源。",
+    "keywords": ["音乐", "临平滚灯", "学科融合"],
+    "files": []
   }
 ]
-

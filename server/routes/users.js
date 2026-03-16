@@ -134,12 +134,21 @@ router.patch('/:id', authMiddleware, (req, res) => {
     const { id } = req.params
     const { displayName, grade, classId, avatarUrl } = req.body
     const numericId = parseInt(id, 10)
+    const isSelf = req.user.id === numericId
 
     // 只能更新自己或管理员更新所有
-    if (req.user.id !== numericId && req.user.role !== 'admin') {
+    if (!isSelf && req.user.role !== 'admin') {
       return res.status(403).json({
         error: 'Forbidden',
         message: '无权修改此用户信息'
+      })
+    }
+
+    // 学生修改自己信息时，仅允许修改姓名/头像
+    if (isSelf && req.user.role === 'student' && (grade !== undefined || classId !== undefined)) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: '学生仅可修改姓名或头像'
       })
     }
 

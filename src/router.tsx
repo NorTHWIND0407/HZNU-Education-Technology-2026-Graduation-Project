@@ -15,10 +15,13 @@ import Login from './pages/Login'
 import Resources from './pages/Resources'
 
 function Layout() {
+  const loc = useLocation()
+  const isMicrodocPage = loc.pathname.startsWith('/microdoc')
+
   return (
     <div className="min-h-screen flex flex-col">
       <Nav />
-      <main className="flex-1 container-narrow py-6">
+      <main className={isMicrodocPage ? 'flex-1 w-full px-3 md:px-6 lg:px-10 py-6' : 'flex-1 container-narrow py-6'}>
         <Breadcrumbs />
         <Outlet />
       </main>

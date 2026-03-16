@@ -2,12 +2,31 @@ import React from 'react'
 import { fetchJSONC } from '../lib/api'
 import type { Entry } from '../types/content'
 
+const RECOMMENDATION_COUNT = 4
+const RECOMMENDATION_CACHE_KEY = 'about_lantern_last_recommendations'
+const DEFAULT_RECOMMENDATIONS = ['临平滚灯', '滚灯 起源', '滚灯 制作', '滚灯 基本动作']
+
+function pickRandomKeywords(pool: string[], count: number) {
+  const copy = [...pool]
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy.slice(0, Math.min(count, copy.length))
+}
+
+function isSameRecommendation(a: string[], b: string[]) {
+  if (a.length !== b.length) return false
+  return a.every((word, idx) => word === b[idx])
+}
+
 export default function AboutLantern() {
   const [entries, setEntries] = React.useState<Entry[]>([])
   const [q, setQ] = React.useState('')
   const [hasSearched, setHasSearched] = React.useState(false)
   const [activeId, setActiveId] = React.useState<string | null>(null)
   const [showSuggestions, setShowSuggestions] = React.useState(false)
+  const [recommendedKeywords, setRecommendedKeywords] = React.useState<string[]>(DEFAULT_RECOMMENDATIONS)
 
   React.useEffect(() => {
     fetchJSONC<Entry[]>('/content/entries.json').then(setEntries)
@@ -22,6 +41,31 @@ export default function AboutLantern() {
     ;['滚灯 起源', '滚灯 制作', '滚灯 基本动作', '临平滚灯 非遗'].forEach(k => set.add(k))
     return Array.from(set)
   }, [entries])
+
+  React.useEffect(() => {
+    if (allKeywords.length === 0) return
+    const candidatePool =
+      allKeywords.length >= RECOMMENDATION_COUNT ? allKeywords : DEFAULT_RECOMMENDATIONS
+
+    let previous: string[] = []
+    try {
+      previous = JSON.parse(localStorage.getItem(RECOMMENDATION_CACHE_KEY) || '[]')
+    } catch {
+      previous = []
+    }
+
+    let next = pickRandomKeywords(candidatePool, RECOMMENDATION_COUNT)
+    if (candidatePool.length > RECOMMENDATION_COUNT) {
+      let retry = 0
+      while (isSameRecommendation(next, previous) && retry < 5) {
+        next = pickRandomKeywords(candidatePool, RECOMMENDATION_COUNT)
+        retry += 1
+      }
+    }
+
+    setRecommendedKeywords(next)
+    localStorage.setItem(RECOMMENDATION_CACHE_KEY, JSON.stringify(next))
+  }, [allKeywords])
 
   const suggestions = React.useMemo(() => {
     const input = q.trim().toLowerCase()
@@ -144,7 +188,7 @@ export default function AboutLantern() {
           </span>
         </div>
         <div className="flex flex-wrap gap-2 mb-3">
-          {['临平滚灯', '滚灯 起源', '滚灯 制作', '滚灯 基本动作'].map(word => (
+          {recommendedKeywords.map(word => (
             <button
               key={word}
               type="button"

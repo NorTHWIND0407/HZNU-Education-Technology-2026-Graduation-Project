@@ -8,6 +8,9 @@ import { nanoid } from 'nanoid'
 import { UserDB, SessionDB } from '../db/index.js'
 
 const router = express.Router()
+const ADMIN_USERNAME = 'admin'
+const TEACHER_RE = /^t([3-9])(0[1-9]|10)$/i
+const STUDENT_RE = /^s([3-9])(0[1-9]|10)(0[1-9]|[1-3][0-9]|4[0-5])$/i
 
 // 生成session token
 function generateToken() {
@@ -21,41 +24,132 @@ function getExpiryDate(hours = 24) {
   return date.toISOString()
 }
 
+function buildClassId(gradeNo, classNo) {
+  return `class_${gradeNo}${classNo}`
+}
+
+function parseAccount(rawUsername) {
+  const username = String(rawUsername || '').trim()
+  const normalizedUsername = username.toLowerCase()
+  if (!username) return null
+
+  if (normalizedUsername === ADMIN_USERNAME) {
+    return {
+      username: ADMIN_USERNAME,
+      role: 'admin',
+      classId: null,
+      grade: null,
+      displayName: '管理员',
+      metadata: null
+    }
+  }
+
+  const teacherMatch = normalizedUsername.match(TEACHER_RE)
+  if (teacherMatch) {
+    const gradeNo = teacherMatch[1]
+    const classNo = teacherMatch[2]
+    return {
+      username: normalizedUsername,
+      role: 'teacher',
+      classId: buildClassId(gradeNo, classNo),
+      grade: `${gradeNo}年级`,
+      displayName: normalizedUsername,
+      metadata: JSON.stringify({ gradeNo, classNo })
+    }
+  }
+
+  const studentMatch = normalizedUsername.match(STUDENT_RE)
+  if (studentMatch) {
+    const gradeNo = studentMatch[1]
+    const classNo = studentMatch[2]
+    const studentNo = studentMatch[3]
+    return {
+      username: normalizedUsername,
+      role: 'student',
+      classId: buildClassId(gradeNo, classNo),
+      grade: `${gradeNo}年级`,
+      displayName: normalizedUsername,
+      metadata: JSON.stringify({ gradeNo, classNo, studentNo })
+    }
+  }
+
+  return null
+}
+
 /**
  * POST /api/auth/login
- * 轻量级登录（无密码）
- * 适合教室环境，教师管理学生账号
+ * 账号登录（账号+密码）
+ * 账号规则：
+ * - 学生：s + 年级(3-9) + 班级(01-10) + 学号(01-45)，例如 s30101
+ * - 教师：t + 年级(3-9) + 班级(01-10)，例如 t301
+ * - 管理员：admin
+ * 密码仅做一致性校验，不入库保存。
  */
 router.post('/login', (req, res) => {
   try {
-    const { username } = req.body
+    const usernameInput = String(req.body?.username || '').trim()
+    const passwordInput = String(req.body?.password || '').trim()
 
-    if (!username || username.trim().length < 2) {
+    if (!usernameInput || !passwordInput) {
       return res.status(400).json({
-        error: 'Invalid username',
-        message: '用户名至少2个字符'
+        error: 'Invalid credentials',
+        message: '请输入账号和密码'
+      })
+    }
+
+    // 账号与密码一致即通过（仅校验，不保存密码）
+    if (usernameInput !== passwordInput) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        message: '账号或密码错误'
+      })
+    }
+
+    const account = parseAccount(usernameInput)
+    if (!account) {
+      return res.status(400).json({
+        error: 'Invalid username format',
+        message: '账号格式错误：学生用 s30101，教师用 t301，管理员用 admin'
       })
     }
 
     // 查找用户
-    let user = UserDB.findByUsername(username.trim())
+    let user = UserDB.findByUsername(account.username)
 
-    // 如果用户不存在，自动创建（仅限学生）
+    // 首次登录自动建档（不存密码）
     if (!user) {
-      // 简单规则：工号以T开头的是教师，其他是学生
-      const role = username.startsWith('T') ? 'teacher' : 'student'
-
       const result = UserDB.create({
-        username: username.trim(),
-        display_name: username.trim(),
-        role,
-        grade: null,
-        class_id: null,
+        username: account.username,
+        display_name: account.displayName,
+        role: account.role,
+        grade: account.grade,
+        class_id: account.classId,
         school_id: null,
-        metadata: null
+        metadata: account.metadata
       })
 
       user = UserDB.findById(result.lastInsertRowid)
+    }
+
+    // 防止账号规则变更后出现角色错配
+    if (user.role !== account.role) {
+      return res.status(403).json({
+        error: 'Role mismatch',
+        message: '账号角色不匹配，请联系管理员'
+      })
+    }
+
+    // 同步班级/年级信息（教师/学生）
+    const profileUpdates = {}
+    if (account.classId && user.class_id !== account.classId) {
+      profileUpdates.classId = account.classId
+    }
+    if (account.grade && !user.grade) {
+      profileUpdates.grade = account.grade
+    }
+    if (Object.keys(profileUpdates).length > 0) {
+      UserDB.updateProfile(user.id, profileUpdates)
+      user = UserDB.findById(user.id)
     }
 
     // 检查用户是否激活

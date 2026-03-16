@@ -8,6 +8,7 @@ import { FeedbackDB, SessionDB } from '../db/index.js'
 import { broadcast } from '../index.js'
 
 const router = express.Router()
+const VALID_STATUSES = ['pending', 'reviewed', 'resolved', 'archived']
 
 // 认证中间件
 function authMiddleware(req, res, next) {
@@ -30,6 +31,32 @@ function authMiddleware(req, res, next) {
   }
 
   next()
+}
+
+function normalizeClassId(rawClassId) {
+  const value = String(rawClassId || '').trim().toLowerCase()
+  if (!value) return null
+  return value.startsWith('class_') ? value : `class_${value}`
+}
+
+function sameClass(left, right) {
+  return normalizeClassId(left) === normalizeClassId(right)
+}
+
+function canReadFeedback(user, feedback) {
+  if (user.role === 'admin') return true
+  if (user.role === 'teacher') return sameClass(user.classId, feedback.class_id)
+  return feedback.user_id === user.id
+}
+
+function canManageFeedback(user, feedback) {
+  if (user.role === 'admin') return true
+  if (user.role === 'teacher') return sameClass(user.classId, feedback.class_id)
+  return false
+}
+
+function canEditOwnFeedback(user, feedback) {
+  return user.role === 'student' && feedback.user_id === user.id
 }
 
 /**
@@ -58,11 +85,36 @@ router.post('/', authMiddleware, (req, res) => {
     } = req.body
 
     // 验证必填字段
-    if (!rating || rating < 1 || rating > 5) {
+    const numericRating = Number(rating)
+    if (!Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
       return res.status(400).json({
         error: 'Invalid rating',
         message: '请提供1-5的评分'
       })
+    }
+
+    const ownClassId = normalizeClassId(req.user.classId)
+    const requestedClassId = normalizeClassId(classId)
+    let targetClassId = requestedClassId || ownClassId
+
+    if (req.user.role === 'student') {
+      targetClassId = ownClassId
+    }
+
+    if (req.user.role === 'teacher') {
+      if (!ownClassId) {
+        return res.status(400).json({
+          error: 'Missing class',
+          message: '教师账号未绑定班级'
+        })
+      }
+      if (requestedClassId && requestedClassId !== ownClassId) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: '教师只能提交本班反馈'
+        })
+      }
+      targetClassId = ownClassId
     }
 
     // 准备数据
@@ -70,7 +122,7 @@ router.post('/', authMiddleware, (req, res) => {
       user_id: req.user.id,
       role: req.user.role,
       feedback_type: feedbackType,
-      class_id: classId || req.user.classId,
+      class_id: targetClassId,
       grade,
       modules_used: modulesUsed ? JSON.stringify(modulesUsed) : null,
       lesson_id: lessonId,
@@ -83,7 +135,7 @@ router.post('/', authMiddleware, (req, res) => {
       technical_issues: technicalIssues,
       open_comment: openComment,
       suggestions,
-      rating,
+      rating: numericRating,
       tags: tags ? JSON.stringify(tags) : null,
       status: 'pending'
     }
@@ -118,13 +170,14 @@ router.post('/', authMiddleware, (req, res) => {
 router.get('/', authMiddleware, (req, res) => {
   try {
     const { role, class_id, status, feedback_type, limit = 50 } = req.query
+    const parsedLimit = Number.parseInt(String(limit), 10)
+    const normalizedClassId = class_id ? normalizeClassId(class_id) : null
 
     const filters = {
       role,
-      class_id,
       status,
       feedback_type,
-      limit: parseInt(limit)
+      limit: Number.isNaN(parsedLimit) ? 50 : parsedLimit
     }
 
     // 教师可以查看本班所有反馈
@@ -135,9 +188,23 @@ router.get('/', authMiddleware, (req, res) => {
       return res.json({ success: true, feedbacks })
     }
 
-    // 教师查看本班或全部
-    if (req.user.role === 'teacher' && !filters.class_id) {
-      filters.class_id = req.user.classId
+    if (req.user.role === 'teacher') {
+      const ownClassId = normalizeClassId(req.user.classId)
+      if (!ownClassId) {
+        return res.status(400).json({
+          error: 'Missing class',
+          message: '教师账号未绑定班级'
+        })
+      }
+      if (normalizedClassId && normalizedClassId !== ownClassId) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: '教师只能查看本班反馈'
+        })
+      }
+      filters.class_id = ownClassId
+    } else if (normalizedClassId) {
+      filters.class_id = normalizedClassId
     }
 
     const feedbacks = FeedbackDB.list(filters)
@@ -172,15 +239,7 @@ router.get('/:id', authMiddleware, (req, res) => {
       })
     }
 
-    // 权限检查：学生只能查看自己的，教师可以查看本班的
-    if (req.user.role === 'student' && feedback.user_id !== req.user.id) {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: '无权查看此反馈'
-      })
-    }
-
-    if (req.user.role === 'teacher' && feedback.class_id !== req.user.classId) {
+    if (!canReadFeedback(req.user, feedback)) {
       return res.status(403).json({
         error: 'Forbidden',
         message: '无权查看此反馈'
@@ -196,6 +255,165 @@ router.get('/:id', authMiddleware, (req, res) => {
     res.status(500).json({
       error: 'Failed to fetch feedback',
       message: '获取反馈失败'
+    })
+  }
+})
+
+/**
+ * PATCH /api/feedback/:id
+ * 更新反馈（学生可改自己；教师/管理员可管理班级）
+ */
+router.patch('/:id', authMiddleware, (req, res) => {
+  try {
+    const { id } = req.params
+    const feedback = FeedbackDB.findById(id)
+    if (!feedback) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: '反馈不存在'
+      })
+    }
+
+    const managerAllowed = ['teacher', 'admin'].includes(req.user.role) && canManageFeedback(req.user, feedback)
+    const studentAllowed = canEditOwnFeedback(req.user, feedback)
+    if (!managerAllowed && !studentAllowed) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: '无权修改此反馈'
+      })
+    }
+
+    const {
+      feedbackType,
+      classId,
+      grade,
+      modulesUsed,
+      lessonId,
+      understandingScore,
+      interestScore,
+      difficultyScore,
+      difficultyAspects,
+      teachingEffectiveness,
+      studentEngagement,
+      technicalIssues,
+      openComment,
+      suggestions,
+      rating,
+      tags,
+      status,
+      adminNotes
+    } = req.body
+
+    const updates = {}
+    const isStudent = req.user.role === 'student'
+
+    if (isStudent && classId !== undefined) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: '学生不能修改班级'
+      })
+    }
+    if (isStudent && status !== undefined) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: '学生不能修改反馈状态'
+      })
+    }
+    if (isStudent && adminNotes !== undefined) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: '学生不能修改管理员备注'
+      })
+    }
+
+    if (feedbackType !== undefined) updates.feedback_type = feedbackType
+    if (grade !== undefined) updates.grade = grade
+    if (lessonId !== undefined) updates.lesson_id = lessonId
+    if (understandingScore !== undefined) updates.understanding_score = understandingScore
+    if (interestScore !== undefined) updates.interest_score = interestScore
+    if (difficultyScore !== undefined) updates.difficulty_score = difficultyScore
+    if (!isStudent && teachingEffectiveness !== undefined) updates.teaching_effectiveness = teachingEffectiveness
+    if (!isStudent && studentEngagement !== undefined) updates.student_engagement = studentEngagement
+    if (!isStudent && technicalIssues !== undefined) updates.technical_issues = technicalIssues
+    if (openComment !== undefined) updates.open_comment = openComment
+    if (suggestions !== undefined) updates.suggestions = suggestions
+    if (modulesUsed !== undefined) updates.modules_used = modulesUsed ? JSON.stringify(modulesUsed) : null
+    if (difficultyAspects !== undefined) updates.difficulty_aspects = difficultyAspects ? JSON.stringify(difficultyAspects) : null
+    if (tags !== undefined) updates.tags = tags ? JSON.stringify(tags) : null
+    if (!isStudent && adminNotes !== undefined) updates.admin_notes = adminNotes
+
+    if (rating !== undefined) {
+      const numericRating = Number(rating)
+      if (!Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
+        return res.status(400).json({
+          error: 'Invalid rating',
+          message: '评分必须在 1-5 之间'
+        })
+      }
+      updates.rating = numericRating
+    }
+
+    if (classId !== undefined) {
+      const normalizedClassId = normalizeClassId(classId)
+      if (!normalizedClassId) {
+        return res.status(400).json({
+          error: 'Invalid classId',
+          message: '班级不能为空'
+        })
+      }
+      if (req.user.role === 'teacher' && !sameClass(req.user.classId, normalizedClassId)) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: '教师只能修改本班反馈'
+        })
+      }
+      updates.class_id = normalizedClassId
+    }
+
+    if (status !== undefined) {
+      if (!VALID_STATUSES.includes(status)) {
+        return res.status(400).json({
+          error: 'Invalid status',
+          message: '无效的状态值'
+        })
+      }
+    }
+
+    const hasFieldUpdates = Object.keys(updates).length > 0
+    const hasStatusUpdate = !isStudent && status !== undefined
+
+    if (!hasFieldUpdates && !hasStatusUpdate) {
+      return res.status(400).json({
+        error: 'No updates',
+        message: '没有可更新的字段'
+      })
+    }
+
+    if (hasFieldUpdates) {
+      FeedbackDB.update(id, updates)
+    }
+
+    if (hasStatusUpdate) {
+      FeedbackDB.updateStatus(id, status, req.user.id)
+    }
+
+    const updatedFeedback = FeedbackDB.findById(id)
+
+    broadcast('feedback', {
+      type: 'feedback_updated',
+      data: updatedFeedback
+    })
+
+    res.json({
+      success: true,
+      message: '反馈已更新',
+      feedback: updatedFeedback
+    })
+  } catch (err) {
+    console.error('[Feedback] Update error:', err)
+    res.status(500).json({
+      error: 'Failed to update feedback',
+      message: '更新反馈失败'
     })
   }
 })
@@ -217,8 +435,22 @@ router.patch('/:id/status', authMiddleware, (req, res) => {
       })
     }
 
-    const validStatuses = ['pending', 'reviewed', 'resolved', 'archived']
-    if (!validStatuses.includes(status)) {
+    const feedback = FeedbackDB.findById(id)
+    if (!feedback) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: '反馈不存在'
+      })
+    }
+
+    if (!canManageFeedback(req.user, feedback)) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: '无权修改此反馈'
+      })
+    }
+
+    if (!VALID_STATUSES.includes(status)) {
       return res.status(400).json({
         error: 'Invalid status',
         message: '无效的状态值'
@@ -226,18 +458,18 @@ router.patch('/:id/status', authMiddleware, (req, res) => {
     }
 
     FeedbackDB.updateStatus(id, status, req.user.id)
-    const feedback = FeedbackDB.findById(id)
+    const updatedFeedback = FeedbackDB.findById(id)
 
     // 广播状态更新
     broadcast('feedback', {
       type: 'feedback_updated',
-      data: feedback
+      data: updatedFeedback
     })
 
     res.json({
       success: true,
       message: '状态已更新',
-      feedback
+      feedback: updatedFeedback
     })
   } catch (err) {
     console.error('[Feedback] Update status error:', err)
@@ -250,25 +482,39 @@ router.patch('/:id/status', authMiddleware, (req, res) => {
 
 /**
  * DELETE /api/feedback/:id
- * 删除反馈（仅管理员）
+ * 删除反馈（学生可撤回自己的；教师/管理员可管理班级）
  */
 router.delete('/:id', authMiddleware, (req, res) => {
   try {
     const { id } = req.params
 
-    // 只有管理员可以删除
-    if (req.user.role !== 'admin') {
+    const feedback = FeedbackDB.findById(id)
+    if (!feedback) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: '反馈不存在'
+      })
+    }
+
+    const managerAllowed = ['teacher', 'admin'].includes(req.user.role) && canManageFeedback(req.user, feedback)
+    const studentAllowed = canEditOwnFeedback(req.user, feedback)
+    if (!managerAllowed && !studentAllowed) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: '只有管理员可以删除反馈'
+        message: '无权撤回/删除此反馈'
       })
     }
 
     FeedbackDB.delete(id)
 
+    broadcast('feedback', {
+      type: 'feedback_deleted',
+      data: { id: Number(id) }
+    })
+
     res.json({
       success: true,
-      message: '反馈已删除'
+      message: studentAllowed ? '反馈已撤回' : '反馈已删除'
     })
   } catch (err) {
     console.error('[Feedback] Delete error:', err)
@@ -302,6 +548,14 @@ router.post('/batch', authMiddleware, (req, res) => {
       })
     }
 
+    const teacherClassId = normalizeClassId(req.user.classId)
+    if (!teacherClassId) {
+      return res.status(400).json({
+        error: 'Missing class',
+        message: '教师账号未绑定班级'
+      })
+    }
+
     const results = []
     for (const fb of feedbacks) {
       try {
@@ -309,7 +563,7 @@ router.post('/batch', authMiddleware, (req, res) => {
           user_id: fb.userId,
           role: 'student',
           feedback_type: fb.feedbackType || 'general',
-          class_id: req.user.classId,
+          class_id: teacherClassId,
           grade: fb.grade,
           modules_used: fb.modulesUsed ? JSON.stringify(fb.modulesUsed) : null,
           understanding_score: fb.understandingScore,

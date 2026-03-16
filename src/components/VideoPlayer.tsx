@@ -5,24 +5,30 @@ export default function VideoPlayer({
   sources = [],
   poster,
   iframeSrc,
-  iframeTitle
+  iframeTitle,
+  size = 'default'
 }: {
   sources?: VideoSource[]
   poster?: string
   iframeSrc?: string
   iframeTitle?: string
+  size?: 'default' | 'large'
 }) {
   const hasIframe = Boolean(iframeSrc)
   const [showIframe, setShowIframe] = React.useState(!hasIframe)
+  const frameClass = size === 'large'
+    ? 'relative w-full overflow-hidden rounded bg-black aspect-video min-h-[240px] md:min-h-[420px] lg:min-h-[520px]'
+    : 'relative w-full overflow-hidden rounded bg-black aspect-video'
+  const containerClass = size === 'large' ? 'card p-4 md:p-5' : 'card p-3'
 
   React.useEffect(() => {
     setShowIframe(!hasIframe)
   }, [hasIframe, iframeSrc])
 
   return (
-    <div className="card p-3">
+    <div className={containerClass}>
       {hasIframe ? (
-        <div className="relative w-full overflow-hidden rounded bg-black" style={{ paddingTop: '56.25%' }}>
+        <div className={frameClass}>
           {showIframe ? (
             <iframe
               src={iframeSrc}
@@ -44,7 +50,7 @@ export default function VideoPlayer({
           )}
         </div>
       ) : (
-        <div className="relative w-full overflow-hidden rounded bg-black" style={{ paddingTop: '56.25%' }}>
+        <div className={frameClass}>
           <video controls poster={poster} className="absolute inset-0 h-full w-full rounded bg-black object-contain">
             {sources.map((s) => (
               <source key={s.label} src={s.src} type="video/mp4" />
