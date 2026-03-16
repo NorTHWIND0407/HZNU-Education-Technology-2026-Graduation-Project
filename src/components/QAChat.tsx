@@ -20,6 +20,19 @@ interface Message {
   }
 }
 
+const formatDateTime = (date: Date, lang: string) =>
+  date.toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', { hour12: false })
+
+const formatFileTimestamp = (date: Date) => {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  const h = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  const s = String(date.getSeconds()).padStart(2, '0')
+  return `${y}${m}${d}-${h}${min}${s}`
+}
+
 export default function QAChat() {
   const lang = useAppStore(s => s.lang)
   const [question, setQuestion] = React.useState('')
@@ -151,6 +164,12 @@ export default function QAChat() {
         setStreamingMessage(fullAnswer)
       }
 
+      if (!fullAnswer.trim()) {
+        const fallback = await ask(userQuestion, { history })
+        fullAnswer = fallback.answer
+        setStreamingMessage(fullAnswer)
+      }
+
       // 完成后添加到消息列表
       const assistantMessage: Message = {
         role: 'assistant',
@@ -225,6 +244,56 @@ export default function QAChat() {
     }
   }
 
+  // 导出 TXT
+  const handleExportTxt = () => {
+    if (messages.length === 0 && !streamingMessage) {
+      return
+    }
+
+    const exportedAt = new Date()
+    const lines: string[] = []
+    const modeText = config?.mode === 'mock' ? 'mock' : 'volcengine'
+    const modelText = config?.model ? String(config.model) : 'unknown'
+
+    lines.push('Linping Rolling Lantern - AI Chat Export')
+    lines.push(`Exported At: ${formatDateTime(exportedAt, lang)}`)
+    lines.push(`AI Mode: ${modeText}`)
+    lines.push(`AI Model: ${modelText}`)
+    lines.push('')
+    lines.push('========================================')
+    lines.push('')
+
+    messages.forEach((msg, index) => {
+      const roleText =
+        msg.role === 'user'
+          ? (lang === 'zh' ? '我' : 'Me')
+          : 'AI'
+      lines.push(`[${index + 1}] ${roleText} | ${formatDateTime(msg.timestamp, lang)}`)
+      lines.push(msg.content)
+      if (msg.usage) {
+        lines.push(`Tokens: ${msg.usage.totalTokens} (prompt=${msg.usage.promptTokens}, completion=${msg.usage.completionTokens})`)
+      }
+      lines.push('')
+    })
+
+    if (isStreaming && streamingMessage) {
+      lines.push(`[${messages.length + 1}] AI | ${formatDateTime(new Date(), lang)} | streaming`)
+      lines.push(streamingMessage)
+      lines.push('')
+    }
+
+    const content = `${lines.join('\n')}\n`
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `ai-chat-${formatFileTimestamp(exportedAt)}.txt`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+  }
+
   // 快捷问题
   const quickQuestions = [
     lang === 'zh' ? '临平滚灯的历史是什么？' : 'What is the history of Linping Rolling Lantern?',
@@ -269,6 +338,12 @@ export default function QAChat() {
       // 流式接收回答
       for await (const chunk of askStream(q, { history })) {
         fullAnswer += chunk
+        setStreamingMessage(fullAnswer)
+      }
+
+      if (!fullAnswer.trim()) {
+        const fallback = await ask(q, { history })
+        fullAnswer = fallback.answer
         setStreamingMessage(fullAnswer)
       }
 
@@ -397,7 +472,7 @@ export default function QAChat() {
           ))}
 
           {/* 流式消息 */}
-          {isStreaming && streamingMessage && (
+          {isStreaming && (
             <div className="flex justify-start animate-fade-in">
               <div className="max-w-[80%] rounded-lg p-3 bg-gold-50 dark:bg-ink-800 border-2 border-gold-200 dark:border-gold-800">
                 <div className="flex items-start gap-2">
@@ -405,10 +480,21 @@ export default function QAChat() {
                     AI
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm whitespace-pre-wrap text-ink-800 dark:text-gray-200">
-                      {streamingMessage}
-                      <span className="inline-block w-2 h-4 ml-1 bg-brand-500 animate-pulse" />
-                    </p>
+                    {streamingMessage ? (
+                      <p className="text-sm whitespace-pre-wrap text-ink-800 dark:text-gray-200">
+                        {streamingMessage}
+                        <span className="inline-block w-2 h-4 ml-1 bg-brand-500 animate-pulse" />
+                      </p>
+                    ) : (
+                      <p className="text-sm text-ink-700 dark:text-gray-300 flex items-center gap-2">
+                        {lang === 'zh' ? 'AI 正在思考中' : 'AI is thinking'}
+                        <span className="inline-flex gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse [animation-delay:120ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse [animation-delay:240ms]" />
+                        </span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -471,6 +557,16 @@ export default function QAChat() {
                 <span>{lang === 'zh' ? '发送' : 'Send'}</span>
               )}
             </button>
+            {messages.length > 0 && (
+              <button
+                onClick={handleExportTxt}
+                disabled={loading}
+                className="btn-outline px-4"
+                aria-label={lang === 'zh' ? '导出TXT' : 'Export TXT'}
+              >
+                {lang === 'zh' ? '导出TXT' : 'Export TXT'}
+              </button>
+            )}
             {messages.length > 0 && (
               <button
                 onClick={handleClear}

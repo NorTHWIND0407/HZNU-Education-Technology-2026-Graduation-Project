@@ -19,6 +19,8 @@ export interface VolcengineConfig {
   maxTokens?: number
   /** 温度 (0-1) */
   temperature?: number
+  /** 请求超时（毫秒） */
+  timeoutMs?: number
   /** 系统提示词 */
   systemPrompt?: string
 }
@@ -52,6 +54,7 @@ export class VolcengineAIClient {
       model: config.model || 'doubao-lite-32k',
       maxTokens: config.maxTokens || 2000,
       temperature: config.temperature || 0.7,
+      timeoutMs: config.timeoutMs || 45000,
       systemPrompt: config.systemPrompt || '你是一个专门介绍临平滚灯文化的AI助手。请用简洁、生动的语言回答问题，适合小学生理解。'
     }
 
@@ -98,20 +101,28 @@ export class VolcengineAIClient {
     })
 
     try {
-      const response = await fetch(`${this.baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.apiKey}`
-        },
-        body: JSON.stringify({
-          model: this.config.endpointId,
-          messages: messages,
-          max_tokens: this.config.maxTokens,
-          temperature: this.config.temperature,
-          stream: options?.stream || false
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs)
+      let response: Response
+      try {
+        response = await fetch(`${this.baseURL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.config.apiKey}`
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: this.config.endpointId,
+            messages: messages,
+            max_tokens: this.config.maxTokens,
+            temperature: this.config.temperature,
+            stream: options?.stream || false
+          })
         })
-      })
+      } finally {
+        clearTimeout(timeoutId)
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -177,20 +188,28 @@ export class VolcengineAIClient {
       content: message
     })
 
-    const response = await fetch(`${this.baseURL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.apiKey}`
-      },
-      body: JSON.stringify({
-        model: this.config.endpointId,
-        messages: messages,
-        max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature,
-        stream: true
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs)
+    let response: Response
+    try {
+      response = await fetch(`${this.baseURL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.config.apiKey}`
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: this.config.endpointId,
+          messages: messages,
+          max_tokens: this.config.maxTokens,
+          temperature: this.config.temperature,
+          stream: true
+        })
       })
-    })
+    } finally {
+      clearTimeout(timeoutId)
+    }
 
     if (!response.ok) {
       throw new Error(`火山引擎 API 错误 (${response.status})`)
@@ -204,16 +223,24 @@ export class VolcengineAIClient {
     }
 
     try {
+      let buffer = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
 
-        const chunk = decoder.decode(value, { stream: true })
-        const lines = chunk.split('\n').filter(line => line.trim() !== '')
+        buffer += decoder.decode(value, { stream: true })
+        buffer = buffer.replace(/\r\n/g, '\n')
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6)
+        let boundaryIndex = buffer.indexOf('\n\n')
+        while (boundaryIndex !== -1) {
+          const eventBlock = buffer.slice(0, boundaryIndex)
+          buffer = buffer.slice(boundaryIndex + 2)
+          boundaryIndex = buffer.indexOf('\n\n')
+
+          const lines = eventBlock.split('\n').filter(line => line.trim() !== '')
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue
+            const data = line.slice(5).trimStart()
             if (data === '[DONE]') continue
 
             try {
@@ -225,6 +252,23 @@ export class VolcengineAIClient {
             } catch (e) {
               console.warn('解析流数据失败:', e)
             }
+          }
+        }
+      }
+
+      // 处理可能残留的最后一个事件块
+      const tail = buffer.trim()
+      if (tail.startsWith('data:')) {
+        const data = tail.slice(5).trimStart()
+        if (data !== '[DONE]') {
+          try {
+            const json = JSON.parse(data)
+            const delta = json.choices?.[0]?.delta?.content
+            if (delta) {
+              yield delta
+            }
+          } catch (e) {
+            console.warn('解析流尾数据失败:', e)
           }
         }
       }
@@ -241,6 +285,7 @@ export class VolcengineAIClient {
       model: this.config.model,
       maxTokens: this.config.maxTokens,
       temperature: this.config.temperature,
+      timeoutMs: this.config.timeoutMs,
       hasApiKey: !!this.config.apiKey,
       hasEndpointId: !!this.config.endpointId
     }

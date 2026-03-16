@@ -28,6 +28,14 @@ export type AskResult = {
 // 全局客户端实例
 let volcengineClient: VolcengineAIClient | null = null
 
+function isMockEnabled(): boolean {
+  const forcedMock = (globalThis as any).__FORCE_MOCK_AI__
+  if (typeof forcedMock === 'boolean') {
+    return forcedMock
+  }
+  return (import.meta.env.VITE_ENABLE_MOCK ?? 'true') !== 'false'
+}
+
 /**
  * 初始化火山引擎客户端
  */
@@ -48,8 +56,8 @@ function getVolcengineClient(): VolcengineAIClient {
     apiKey,
     endpointId,
     model: model || 'Doubao-1.5-pro-256k',
-    maxTokens: 3000,
-    temperature: 0.75,  // 提高温度值以增加创造性和多样性
+    maxTokens: 1800,
+    temperature: 0.6,  // 平衡创造性与稳定性
     systemPrompt: `# 角色设定
 你是"临平滚灯文化传承智能助手"，一位热情洋溢、知识渊博的文化向导！你专门为中小学生介绍浙江省杭州市临平区的非物质文化遗产——临平滚灯。
 
@@ -310,7 +318,7 @@ export async function ask(
   }
 ): Promise<AskResult> {
   // 检查是否启用Mock模式
-  const useMock = (import.meta.env.VITE_ENABLE_MOCK ?? 'true') !== 'false'
+  const useMock = isMockEnabled()
 
   if (useMock) {
     return askMock(question, options?.contextDocs)
@@ -361,7 +369,7 @@ export async function* askStream(
     history?: ChatMessage[]
   }
 ): AsyncGenerator<string, void, unknown> {
-  const useMock = (import.meta.env.VITE_ENABLE_MOCK ?? 'true') !== 'false'
+  const useMock = isMockEnabled()
 
   if (useMock) {
     // Mock 流式响应
@@ -394,7 +402,7 @@ export async function* askStream(
  * 获取当前AI配置信息
  */
 export function getAIConfig() {
-  const useMock = (import.meta.env.VITE_ENABLE_MOCK ?? 'true') !== 'false'
+  const useMock = isMockEnabled()
 
   if (useMock) {
     return {
