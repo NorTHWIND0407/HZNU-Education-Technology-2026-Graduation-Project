@@ -65,6 +65,25 @@ type FormState = {
 
 const MODULE_OPTIONS = ['microdoc', 'lessons', 'h5', 'webar', 'aiqa']
 const FEEDBACK_TYPE_OPTIONS = ['general', 'lesson', 'module', 'bug']
+const MODULE_LABELS: Record<string, string> = {
+  microdoc: '微纪录片',
+  lessons: '动作微课',
+  h5: 'H5 互动手册',
+  webar: 'AR 体验',
+  aiqa: 'AI 智能问答'
+}
+const FEEDBACK_TYPE_LABELS: Record<string, string> = {
+  general: '综合反馈',
+  lesson: '课程反馈',
+  module: '模块反馈',
+  bug: '问题反馈'
+}
+const STATUS_LABELS: Record<string, string> = {
+  pending: '待处理',
+  reviewed: '已查看',
+  resolved: '已解决',
+  archived: '已归档'
+}
 
 function parseModules(input: unknown): string[] {
   if (Array.isArray(input)) {
@@ -79,6 +98,18 @@ function parseModules(input: unknown): string[] {
     }
   }
   return []
+}
+
+function toModuleLabel(value: string): string {
+  return MODULE_LABELS[value] || value
+}
+
+function toFeedbackTypeLabel(value: string): string {
+  return FEEDBACK_TYPE_LABELS[value] || value
+}
+
+function toStatusLabel(value: string): string {
+  return STATUS_LABELS[value] || value
 }
 
 function normalizeFeedback(item: BackendFeedback): FeedbackRecord {
@@ -249,7 +280,7 @@ export default function Feedback() {
         counts.set(module, (counts.get(module) || 0) + 1)
       })
     })
-    return Array.from(counts.entries()).map(([module, usage]) => ({ module, usage }))
+    return Array.from(counts.entries()).map(([module, usage]) => ({ module: toModuleLabel(module), usage }))
   }, [feedbacks])
 
   const chartRatingTrend = React.useMemo(() => {
@@ -430,8 +461,8 @@ export default function Feedback() {
           {user?.role === 'student'
             ? '你提交后可查看、修改和撤回自己的反馈记录。'
             : user?.role === 'teacher'
-              ? '你可以查看本班反馈并导出 CSV。'
-              : '你可以查看反馈并按班级导出 CSV。'}
+              ? '你可以查看本班反馈并导出表格数据。'
+              : '你可以查看反馈并按班级导出表格数据。'}
         </p>
       </header>
 
@@ -445,17 +476,17 @@ export default function Feedback() {
               onChange={e => setForm({ ...form, feedbackType: e.target.value })}
             >
               {FEEDBACK_TYPE_OPTIONS.map(type => (
-                <option key={type} value={type}>{type}</option>
+                <option key={type} value={type}>{toFeedbackTypeLabel(type)}</option>
               ))}
             </select>
           </label>
 
-          <label className="text-sm">班级 ID
+          <label className="text-sm">班级编号
             <input
               className="w-full border rounded px-2 py-1 bg-transparent"
               value={form.classId}
               onChange={e => setForm({ ...form, classId: e.target.value })}
-              placeholder="例如：class_301"
+              placeholder="例如：三(1)班"
             />
           </label>
 
@@ -528,7 +559,7 @@ export default function Feedback() {
                       setForm({ ...form, modulesUsed: Array.from(next) })
                     }}
                   />
-                  {m}
+                  {toModuleLabel(m)}
                 </label>
               ))}
             </div>
@@ -572,7 +603,7 @@ export default function Feedback() {
           </button>
           {canExport && (
             <button className="btn" type="button" onClick={exportCSV} disabled={isExporting}>
-              {isExporting ? '导出中...' : '导出当前可见数据 CSV'}
+              {isExporting ? '导出中...' : '导出当前可见数据（表格）'}
             </button>
           )}
           <button className="btn" type="button" onClick={loadFeedbacks} disabled={isLoading}>
@@ -592,10 +623,10 @@ export default function Feedback() {
               onChange={e => setStatusFilter(e.target.value)}
             >
               <option value="">全部</option>
-              <option value="pending">pending</option>
-              <option value="reviewed">reviewed</option>
-              <option value="resolved">resolved</option>
-              <option value="archived">archived</option>
+              <option value="pending">{toStatusLabel('pending')}</option>
+              <option value="reviewed">{toStatusLabel('reviewed')}</option>
+              <option value="resolved">{toStatusLabel('resolved')}</option>
+              <option value="archived">{toStatusLabel('archived')}</option>
             </select>
           </label>
           <label className="text-sm">
@@ -607,7 +638,7 @@ export default function Feedback() {
             >
               <option value="">全部</option>
               {FEEDBACK_TYPE_OPTIONS.map(type => (
-                <option key={type} value={type}>{type}</option>
+                <option key={type} value={type}>{toFeedbackTypeLabel(type)}</option>
               ))}
             </select>
           </label>
@@ -618,7 +649,7 @@ export default function Feedback() {
                 className="ml-2 border rounded px-2 py-1 bg-transparent"
                 value={classFilter}
                 onChange={e => setClassFilter(e.target.value)}
-                placeholder="例如：class_301"
+                placeholder="例如：三(1)班"
                 readOnly={user?.role === 'teacher'}
               />
             </label>
@@ -658,13 +689,13 @@ export default function Feedback() {
                         disabled={actionFeedbackId === item.id}
                         onChange={e => updateStatus(item.id, e.target.value)}
                       >
-                        <option value="pending">pending</option>
-                        <option value="reviewed">reviewed</option>
-                        <option value="resolved">resolved</option>
-                        <option value="archived">archived</option>
+                        <option value="pending">{toStatusLabel('pending')}</option>
+                        <option value="reviewed">{toStatusLabel('reviewed')}</option>
+                        <option value="resolved">{toStatusLabel('resolved')}</option>
+                        <option value="archived">{toStatusLabel('archived')}</option>
                       </select>
                     ) : (
-                      item.status
+                      toStatusLabel(item.status)
                     )}
                   </td>
                   <td className="py-2 pr-3 max-w-xs">{item.openComment || item.suggestions || '-'}</td>
@@ -704,19 +735,19 @@ export default function Feedback() {
 
       <section className="grid lg:grid-cols-2 gap-4">
         <div className="card p-3">
-          <h3 className="font-medium mb-2">模块使用次数（Bar）</h3>
+          <h3 className="font-medium mb-2">模块使用次数（柱状图）</h3>
           <ChartBar data={chartModuleUsage} />
         </div>
         <div className="card p-3">
-          <h3 className="font-medium mb-2">评分趋势（Line）</h3>
+          <h3 className="font-medium mb-2">评分趋势（折线图）</h3>
           <ChartLine data={chartRatingTrend} />
         </div>
         <div className="card p-3">
-          <h3 className="font-medium mb-2">兴趣分布（Pie）</h3>
+          <h3 className="font-medium mb-2">兴趣分布（饼图）</h3>
           <ChartPie data={chartInterestDistribution} />
         </div>
         <div className="card p-3">
-          <h3 className="font-medium mb-2">自评雷达（Radar）</h3>
+          <h3 className="font-medium mb-2">自评雷达（雷达图）</h3>
           <ChartRadar data={chartRadar} />
         </div>
       </section>

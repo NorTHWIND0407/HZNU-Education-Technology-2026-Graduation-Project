@@ -100,6 +100,11 @@ export const zh: Dict = {
   // Footer
   footer_tech: '技术支持',
   footer_contact: '联系我们',
+  footer_official_links: '官方链接',
+  footer_link_lp_digital_museum: '临平数字文化馆',
+  footer_link_lp_gov: '临平区人民政府',
+  footer_link_ihchina: '中国非物质文化遗产网',
+  footer_link_zj_culture: '浙江省文化广电和旅游厅',
   footer_mock_notice: '当前为 Mock 演示模式',
   footer_copyright: '临平滚灯文化传承教育平台',
 
@@ -208,6 +213,11 @@ export const en: Dict = {
   // Footer
   footer_tech: 'Technical Support',
   footer_contact: 'Contact Us',
+  footer_official_links: 'Official Links',
+  footer_link_lp_digital_museum: 'Linping Digital Culture Museum',
+  footer_link_lp_gov: 'Linping District Government',
+  footer_link_ihchina: 'China Intangible Cultural Heritage',
+  footer_link_zj_culture: 'Zhejiang Department of Culture and Tourism',
   footer_mock_notice: 'Currently in Mock Demo Mode',
   footer_copyright: 'Linping Rolling Lantern Cultural Heritage Education Platform',
 
@@ -221,4 +231,3 @@ export function t(key: string, lang: 'zh' | 'en') {
   const map = lang === 'zh' ? zh : en
   return map[key] ?? key
 }
-

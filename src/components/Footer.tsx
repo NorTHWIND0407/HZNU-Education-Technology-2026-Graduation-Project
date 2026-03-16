@@ -5,12 +5,30 @@ import { t } from '../lib/i18n'
 export default function Footer() {
   const lang = useAppStore(s => s.lang)
   const currentYear = new Date().getFullYear()
+  const officialLinks = [
+    {
+      key: 'footer_link_lp_digital_museum',
+      href: 'http://www.hzlpwhg.com/'
+    },
+    {
+      key: 'footer_link_lp_gov',
+      href: 'https://www.linping.gov.cn/'
+    },
+    {
+      key: 'footer_link_ihchina',
+      href: 'https://www.ihchina.cn/'
+    },
+    {
+      key: 'footer_link_zj_culture',
+      href: 'https://ct.zj.gov.cn/'
+    }
+  ] as const
 
   return (
     <footer className="border-t-2 border-gold-200 dark:border-gold-800/30 bg-gradient-to-b from-paper to-gold-50 dark:from-paper-dark dark:to-ink-900 mt-12">
       <div className="container-narrow py-8">
         {/* Main Footer Content */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-6">
           {/* About Section */}
           <div>
             <h3 className="font-serif font-bold text-lg mb-3 text-ink-900 dark:text-gray-100">
@@ -42,6 +60,27 @@ export default function Footer() {
                   {t('nav_aiqa', lang)}
                 </Link>
               </li>
+            </ul>
+          </div>
+
+          {/* Official Links */}
+          <div>
+            <h3 className="font-serif font-bold text-lg mb-3 text-ink-900 dark:text-gray-100">
+              {t('footer_official_links', lang)}
+            </h3>
+            <ul className="space-y-2 text-sm">
+              {officialLinks.map(link => (
+                <li key={link.href}>
+                  <a
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-ink-600 dark:text-gray-400 hover:text-brand transition-colors"
+                  >
+                    {t(link.key, lang)}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 

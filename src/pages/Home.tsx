@@ -162,10 +162,12 @@ export default function Home() {
               <h3 className="font-serif font-bold text-base text-ink-900 dark:text-gray-100 mb-2">
                 {lang === 'zh' ? '临平滚灯上春晚（资料）' : 'Linping Rolling Lantern on Spring Festival Gala'}
               </h3>
-              <video controls className="w-full rounded-md" poster="/images/microdoc/microdoc-poster-01.jpg">
-                <source src={springGalaVideoSrc} type="video/mp4" />
-                {lang === 'zh' ? '您的浏览器不支持 video 标签。' : 'Your browser does not support the video tag.'}
-              </video>
+              <div className="relative w-full overflow-hidden rounded-md bg-black aspect-video">
+                <video controls className="absolute inset-0 h-full w-full bg-black object-contain">
+                  <source src={springGalaVideoSrc} type="video/mp4" />
+                  {lang === 'zh' ? '您的浏览器不支持 video 标签。' : 'Your browser does not support the video tag.'}
+                </video>
+              </div>
             </div>
             <blockquote className="rounded-lg border border-gold-300/60 bg-gold-50/70 p-4 md:p-4 lg:p-5 text-base md:text-[1.02rem] leading-7 text-ink-700 text-center dark:border-gold-700/60 dark:bg-ink-900/60 dark:text-gray-300 flex items-center justify-center">
               <p>
