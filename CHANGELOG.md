@@ -2,6 +2,21 @@
 
 本文档按日期记录项目的重要变更。以下内容已与当前 Git 历史逐条对齐（截至 2026-03-16）。
 
+## 2026-03-17（v2.7 - AI 配置迁移到后端代理）
+
+对应提交：`待提交`
+
+- AI 配置迁移：
+  - 新增后端 AI 路由 `server/routes/ai.js`，提供 `POST /api/ai/chat` 与 `POST /api/ai/chat/stream`。
+  - 后端统一读取 `server/.env` 中的 `VOLCENGINE_*`，前端不再直接读取密钥。
+- 前后端联调：
+  - `server/index.js` 接入 `/api/ai` 路由，并在 API 首页列出新端点。
+  - `src/lib/aiClient.ts` 改为调用后端代理接口，保留 Mock 模式与流式解析能力。
+  - `src/components/QAChat.tsx` 配置提示改为指向 `server/.env`。
+- 文档与环境模板：
+  - `server/.env.example` 新增 AI 必需变量与可选调优项。
+  - `README.md` 同步改为“后端代理配置说明”。
+
 ## 2026-03-17（v2.6 - 动作微课十课重构与评论区能力升级）
 
 对应提交：`16ea0220`

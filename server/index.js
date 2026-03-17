@@ -19,6 +19,7 @@ import statsRoutes from './routes/stats.js'
 import userRoutes from './routes/users.js'
 import resourceRoutes from './routes/resources.js'
 import microdocRoutes from './routes/microdoc.js'
+import aiRoutes from './routes/ai.js'
 
 // 加载环境变量
 dotenv.config()
@@ -75,7 +76,8 @@ app.get('/', (req, res) => {
       microdoc: '/api/microdoc',
       stats: '/api/stats',
       users: '/api/users',
-      resources: '/api/resources'
+      resources: '/api/resources',
+      ai: '/api/ai'
     }
   })
 })
@@ -87,6 +89,7 @@ app.use('/api/microdoc', microdocRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/resources', resourceRoutes)
+app.use('/api/ai', aiRoutes)
 
 // 404处理
 app.use((req, res) => {

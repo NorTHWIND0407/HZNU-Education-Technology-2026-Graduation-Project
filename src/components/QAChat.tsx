@@ -252,7 +252,7 @@ export default function QAChat() {
 
     const exportedAt = new Date()
     const lines: string[] = []
-    const modeText = config?.mode === 'mock' ? 'mock' : 'volcengine'
+    const modeText = config?.mode ? String(config.mode) : 'unknown'
     const modelText = config?.model ? String(config.model) : 'unknown'
 
     lines.push('Linping Rolling Lantern - AI Chat Export')
@@ -391,15 +391,17 @@ export default function QAChat() {
             {config?.mode === 'mock'
               ? lang === 'zh' ? 'Mock模式 - 演示数据' : 'Mock Mode - Demo Data'
               : config?.enabled
-                ? lang === 'zh' ? `火山引擎 AI (${config.model})` : `Volcengine AI (${config.model})`
+                ? lang === 'zh'
+                  ? `后端代理 AI${config?.model ? ` (${config.model})` : ''}`
+                  : `Backend Proxy AI${config?.model ? ` (${config.model})` : ''}`
                 : lang === 'zh' ? 'AI未配置' : 'AI Not Configured'}
           </span>
         </div>
         {config?.mode === 'mock' && (
           <p className="mt-1 text-xs text-ink-600 dark:text-gray-400">
             {lang === 'zh'
-              ? '当前使用Mock数据。要启用真实AI，请在 .env 文件中配置火山引擎API。'
-              : 'Currently using mock data. To enable real AI, configure Volcengine API in .env file.'}
+              ? '当前使用Mock数据。要启用真实AI，请在 server/.env 中配置 VOLCENGINE_* 并重启后端服务。'
+              : 'Currently using mock data. To enable real AI, configure VOLCENGINE_* in server/.env and restart backend.'}
           </p>
         )}
       </div>

@@ -136,6 +136,11 @@ DATABASE_PATH=./data/feedback.db
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 CORS_ORIGIN=http://localhost:5173
 MICRODOC_COMMENT_LOGIN_REQUIRED=true
+
+# AI（后端代理）
+VOLCENGINE_API_KEY=你的API密钥
+VOLCENGINE_ENDPOINT_ID=你的端点ID
+VOLCENGINE_MODEL=Doubao-1.5-pro-256k
 ```
 
 ### 4.2 登录规则
@@ -162,6 +167,8 @@ MICRODOC_COMMENT_LOGIN_REQUIRED=true
 - `GET /api/microdoc/:clipId`
 - `POST /api/microdoc/:clipId/like`
 - `POST /api/microdoc/:clipId/comments`
+- `POST /api/ai/chat`
+- `POST /api/ai/chat/stream`
 
 ## 5. AI 问答配置
 
@@ -175,23 +182,29 @@ VITE_ENABLE_MOCK=true
 
 适合演示、离线使用和成本可控场景。
 
-### 5.2 火山引擎真实模型
+### 5.2 火山引擎真实模型（后端代理）
 
-`.env`：
+`server/.env`：
+
+```env
+VOLCENGINE_API_KEY=你的API密钥
+VOLCENGINE_ENDPOINT_ID=你的端点ID
+VOLCENGINE_MODEL=Doubao-1.5-pro-256k
+```
+
+前端 `.env` 仅需：
 
 ```env
 VITE_ENABLE_MOCK=false
-VITE_VOLCENGINE_API_KEY=你的API密钥
-VITE_VOLCENGINE_ENDPOINT_ID=你的端点ID
-VITE_VOLCENGINE_MODEL=Doubao-1.5-pro-256k
+VITE_API_URL=http://localhost:3001/api
 ```
 
-相关实现文件：
+相关实现文件（后端代理）：
 
+- `server/routes/ai.js`
 - `src/lib/aiClient.ts`
-- `src/lib/volcengineClient.ts`
 
-修改配置后请重启前端开发服务。
+修改配置后请重启后端服务（如有需要再重启前端）。
 
 ## 6. 页面路由速查
 

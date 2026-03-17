@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_LLM_API_URL?: string
-  readonly VITE_LLM_API_KEY?: string
+  readonly VITE_API_URL?: string
+  readonly VITE_WS_URL?: string
   readonly VITE_ENABLE_MOCK?: string
   readonly VITE_USE_AR?: string
   readonly VITE_I18N_DEFAULT?: string
