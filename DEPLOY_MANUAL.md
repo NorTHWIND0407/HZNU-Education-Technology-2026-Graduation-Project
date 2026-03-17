@@ -137,3 +137,56 @@ systemctl status nginx
 4. 服务器重新安装依赖（如有变更），执行 `pnpm build` 与 `cd server && npm run db:init`  
 5. `pm2 restart lantern-api --update-env`  
 6. `sudo systemctl reload nginx`  
+
+---
+
+## 8. 一键部署脚本（推荐）
+
+仓库根目录已提供 `deploy.sh`，默认面向如下目录：
+
+- 项目目录：`/home/ubuntu/HZNU-Education-Technology-2026-Graduation-Project`
+- 静态目录：`/var/www/culture`
+- 后端进程：`pm2` 的 `lantern-api`（找不到则尝试 `systemd` 的 `hznu-backend`）
+
+在服务器执行：
+
+```bash
+cd /home/ubuntu/HZNU-Education-Technology-2026-Graduation-Project
+bash deploy.sh
+```
+
+脚本会自动完成：
+
+1. `git fetch + reset --hard + git lfs pull`  
+2. `npm ci && npm run build`  
+3. 同步 `dist/` 到 `/var/www/culture/`  
+4. 同步 `content/` 到 `/var/www/culture/content/`  
+5. 重启后端（pm2/systemd 二选一）  
+6. `nginx -t` 和 `nginx reload`  
+
+可选环境变量：
+
+```bash
+REMOTE_NAME=origin BRANCH_NAME=main WEB_ROOT=/var/www/culture bash deploy.sh
+```
+
+---
+
+## 9. GitHub Actions 自动部署（push main 自动执行）
+
+仓库已提供工作流：`.github/workflows/deploy.yml`。  
+触发条件：`push main` 或手动 `workflow_dispatch`。
+
+你需要在 GitHub 仓库 `Settings -> Secrets and variables -> Actions` 中配置：
+
+- `PROD_SSH_HOST`：服务器 IP 或域名
+- `PROD_SSH_USER`：SSH 用户（建议 `ubuntu`）
+- `PROD_SSH_KEY`：对应私钥（多行完整内容）
+- `PROD_SSH_PORT`：SSH 端口（如 `22`）
+
+工作流执行逻辑：
+
+```bash
+cd /home/ubuntu/HZNU-Education-Technology-2026-Graduation-Project
+bash deploy.sh
+```
