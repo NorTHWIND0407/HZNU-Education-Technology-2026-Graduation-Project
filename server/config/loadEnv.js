@@ -6,4 +6,4 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const serverEnvPath = path.resolve(__dirname, '../.env')
 
-dotenv.config({ path: serverEnvPath })
+dotenv.config({ path: serverEnvPath, override: true })
