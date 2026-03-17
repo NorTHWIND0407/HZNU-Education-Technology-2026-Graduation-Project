@@ -9,7 +9,7 @@ import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { WebSocketServer } from 'ws'
 import { createServer } from 'http'
-import dotenv from 'dotenv'
+import './config/loadEnv.js'
 import { initDB, closeDB } from './db/index.js'
 
 // 导入路由
@@ -20,9 +20,6 @@ import userRoutes from './routes/users.js'
 import resourceRoutes from './routes/resources.js'
 import microdocRoutes from './routes/microdoc.js'
 import aiRoutes from './routes/ai.js'
-
-// 加载环境变量
-dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 3001

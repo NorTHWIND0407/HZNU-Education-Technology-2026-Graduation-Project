@@ -13,6 +13,7 @@
   - `server/index.js` 接入 `/api/ai` 路由，并在 API 首页列出新端点。
   - `src/lib/aiClient.ts` 改为调用后端代理接口，保留 Mock 模式与流式解析能力。
   - `src/components/QAChat.tsx` 配置提示改为指向 `server/.env`。
+  - 后端新增 `server/config/loadEnv.js`，固定加载 `server/.env`（与进程启动目录无关）。
 - 文档与环境模板：
   - `server/.env.example` 新增 AI 必需变量与可选调优项。
   - `README.md` 同步改为“后端代理配置说明”。
