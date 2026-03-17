@@ -2,7 +2,7 @@
 
 这是一个用于毕业设计展示的临平滚灯主题网站，包含前端展示、后端登录与反馈、以及可切换 Mock/真实接口的 AI 问答模块。项目内置占位素材和示例内容，先跑通系统，再逐步替换成你的真实教学资源即可。
 
-- 文档更新时间：2026-03-16
+- 文档更新时间：2026-03-17
 - 主要技术栈：Vite、React、TypeScript、TailwindCSS、Zustand、Recharts、A-Frame（WebAR）
 
 ## 文档索引
@@ -206,6 +206,32 @@ VITE_API_URL=http://localhost:3001/api
 
 修改配置后请重启后端服务（如有需要再重启前端）。
 
+### 5.3 开源复用必读（Fork 后必须自配）
+
+本仓库是开源项目，任何克隆者都可以运行，但 AI 与生产部署配置必须使用“自己的值”：
+
+- 必须在自己的 `server/.env` 设置：
+  - `VOLCENGINE_API_KEY`
+  - `VOLCENGINE_ENDPOINT_ID`
+  - `VOLCENGINE_MODEL`（可选）
+- 必须在自己的前端 `.env` 设置：
+  - `VITE_ENABLE_MOCK=false`（使用真实 AI 时）
+  - `VITE_API_URL`（指向自己的后端）
+- 如果使用 GitHub Actions 自动部署，必须在自己仓库 Secrets 设置：
+  - `PROD_SSH_HOST`
+  - `PROD_SSH_USER`
+  - `PROD_SSH_KEY`
+  - `PROD_SSH_PORT`
+  - `PROD_VOLCENGINE_API_KEY`
+  - `PROD_VOLCENGINE_ENDPOINT_ID`
+  - `PROD_VOLCENGINE_MODEL`
+
+注意：
+
+- 本仓库不会提交真实密钥（`.env` / `server/.env` 已被忽略）。
+- 你看到的示例值仅用于说明格式，不能直接用于生产。
+- 迁移到新域名时请同步修改 `CORS_ORIGIN`、Nginx `server_name` 和 SSL 证书配置。
+
 ## 6. 页面路由速查
 
 - `/` 首页
@@ -241,3 +267,4 @@ VITE_API_URL=http://localhost:3001/api
 - `push main` 会触发 `.github/workflows/deploy.yml` 自动部署到生产服务器。
 - 部署时自动把 Actions secrets 中的 `VOLCENGINE_*` 写入服务器 `server/.env`，并重启后端。
 - 仓库启用 `.github/workflows/secret-guard.yml`，防止密钥/私钥误提交。
+- 开源复用者在自己的仓库补齐 Secrets 后，可直接复用同一套自动化流程。

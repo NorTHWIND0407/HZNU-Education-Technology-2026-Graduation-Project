@@ -202,6 +202,7 @@ bash deploy.sh
 - `server/.env` 在仓库中被忽略，不会随 `git push` 同步。
 - 现在 `deploy.sh` 会在运行时读取 Actions 注入的 `VOLCENGINE_*`，自动写入/更新服务器 `server/.env`，再重启后端。
 - 如果服务器未配置 pm2/systemd，`deploy.sh` 会自动使用 nohup 启动 `server/index.js`，避免“代码更新但后端仍是旧进程”。
+- 你 fork 到其他 GitHub 仓库后，也必须在“新仓库”重新配置同名 Secrets，原仓库 Secrets 不会继承。
 
 ---
 

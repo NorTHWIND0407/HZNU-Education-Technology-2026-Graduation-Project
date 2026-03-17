@@ -4,7 +4,7 @@
 
 ## 2026-03-17（v2.7 - AI 配置迁移到后端代理）
 
-对应提交：`f98c27ea`、`f15fead1`、`592914b0`
+对应提交：`f98c27ea`、`f15fead1`、`592914b0`、`06ac528f`、`11928504`
 
 - AI 配置迁移：
   - 新增后端 AI 路由 `server/routes/ai.js`，提供 `POST /api/ai/chat` 与 `POST /api/ai/chat/stream`。
@@ -22,6 +22,7 @@
   - `deploy.sh` 新增后端 nohup 兜底重启与 AI 路由健康检查，减少“部署后仍跑旧进程”问题。
 - 安全防护：
   - 新增 `.github/workflows/secret-guard.yml` 与 `scripts/security/guard-secrets.sh`，阻止密钥/私钥误提交。
+  - `README.md` / `DEPLOY_MANUAL.md` 新增“开源复用必读”，明确 fork 后需自行配置 `server/.env` 与 GitHub Secrets。
 
 ## 2026-03-17（v2.6 - 动作微课十课重构与评论区能力升级）
 
