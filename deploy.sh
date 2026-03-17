@@ -40,6 +40,48 @@ run_privileged() {
   fail "Need root or passwordless sudo to run: $*"
 }
 
+upsert_env_var() {
+  local env_file="$1"
+  local key="$2"
+  local value="$3"
+  local tmp_file
+  tmp_file="$(mktemp)"
+
+  if [[ -f "$env_file" ]]; then
+    grep -v "^${key}=" "$env_file" > "$tmp_file" || true
+  fi
+  printf '%s=%s\n' "$key" "$value" >> "$tmp_file"
+  mv "$tmp_file" "$env_file"
+}
+
+sync_backend_ai_env() {
+  local env_file="$PROJECT_DIR/server/.env"
+  local updated=0
+
+  if [[ ! -f "$env_file" ]]; then
+    cp "$PROJECT_DIR/server/.env.example" "$env_file"
+  fi
+
+  if [[ -n "${VOLCENGINE_API_KEY:-}" ]]; then
+    upsert_env_var "$env_file" "VOLCENGINE_API_KEY" "$VOLCENGINE_API_KEY"
+    updated=1
+  fi
+  if [[ -n "${VOLCENGINE_ENDPOINT_ID:-}" ]]; then
+    upsert_env_var "$env_file" "VOLCENGINE_ENDPOINT_ID" "$VOLCENGINE_ENDPOINT_ID"
+    updated=1
+  fi
+  if [[ -n "${VOLCENGINE_MODEL:-}" ]]; then
+    upsert_env_var "$env_file" "VOLCENGINE_MODEL" "$VOLCENGINE_MODEL"
+    updated=1
+  fi
+
+  if [[ "$updated" -eq 1 ]]; then
+    log "Synced backend AI env into server/.env from deploy runtime variables."
+  else
+    log "No deploy-time AI env provided; keep existing server/.env values."
+  fi
+}
+
 detect_remote() {
   if [[ -n "${REMOTE_NAME:-}" ]]; then
     printf '%s' "$REMOTE_NAME"
@@ -124,6 +166,8 @@ main() {
   run_privileged rsync -av --delete "$PROJECT_DIR/dist/" "$WEB_ROOT/"
   run_privileged mkdir -p "$WEB_ROOT/content"
   run_privileged rsync -av --delete "$PROJECT_DIR/content/" "$WEB_ROOT/content/"
+
+  sync_backend_ai_env
 
   restart_backend
 

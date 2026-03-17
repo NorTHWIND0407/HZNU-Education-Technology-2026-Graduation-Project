@@ -183,6 +183,9 @@ REMOTE_NAME=origin BRANCH_NAME=main WEB_ROOT=/var/www/culture bash deploy.sh
 - `PROD_SSH_USER`：SSH 用户（建议 `ubuntu`）
 - `PROD_SSH_KEY`：对应私钥（多行完整内容）
 - `PROD_SSH_PORT`：SSH 端口（如 `22`）
+- `PROD_VOLCENGINE_API_KEY`：后端 AI 密钥
+- `PROD_VOLCENGINE_ENDPOINT_ID`：后端 AI 端点 ID
+- `PROD_VOLCENGINE_MODEL`：后端 AI 模型（可选，建议 `Doubao-1.5-pro-256k`）
 
 工作流执行逻辑：
 
@@ -190,3 +193,8 @@ REMOTE_NAME=origin BRANCH_NAME=main WEB_ROOT=/var/www/culture bash deploy.sh
 cd /home/ubuntu/HZNU-Education-Technology-2026-Graduation-Project
 bash deploy.sh
 ```
+
+说明：
+
+- `server/.env` 在仓库中被忽略，不会随 `git push` 同步。
+- 现在 `deploy.sh` 会在运行时读取 Actions 注入的 `VOLCENGINE_*`，自动写入/更新服务器 `server/.env`，再重启后端。

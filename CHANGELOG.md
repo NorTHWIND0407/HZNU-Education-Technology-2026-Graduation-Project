@@ -4,7 +4,7 @@
 
 ## 2026-03-17（v2.7 - AI 配置迁移到后端代理）
 
-对应提交：`f98c27ea`
+对应提交：`f98c27ea`、`f15fead1`、`592914b0`
 
 - AI 配置迁移：
   - 新增后端 AI 路由 `server/routes/ai.js`，提供 `POST /api/ai/chat` 与 `POST /api/ai/chat/stream`。
@@ -16,6 +16,9 @@
 - 文档与环境模板：
   - `server/.env.example` 新增 AI 必需变量与可选调优项。
   - `README.md` 同步改为“后端代理配置说明”。
+- 自动部署补全：
+  - `.github/workflows/deploy.yml` 新增 `VOLCENGINE_*` secrets 注入。
+  - `deploy.sh` 支持将部署时环境变量同步到服务器 `server/.env`，避免手工拷贝。
 
 ## 2026-03-17（v2.6 - 动作微课十课重构与评论区能力升级）
 
