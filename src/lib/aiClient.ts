@@ -203,6 +203,10 @@ export async function* askStream(
     })
 
     if (!response.ok) {
+      // 流式接口不可用时返回空，由上层自动回退到普通问答接口
+      if (response.status === 404) {
+        return
+      }
       throw new Error(await parseErrorMessage(response))
     }
 
@@ -263,7 +267,9 @@ export async function* askStream(
       }
     }
   } catch (error: any) {
-    yield `抱歉，AI助手暂时无法回答: ${error?.message || String(error)}`
+    console.error('AI流式请求失败:', error)
+    // 出错时不直接输出错误文案，交由上层 fallback 到 ask()
+    return
   }
 }
 
