@@ -19,6 +19,9 @@
 - 自动部署补全：
   - `.github/workflows/deploy.yml` 新增 `VOLCENGINE_*` secrets 注入。
   - `deploy.sh` 支持将部署时环境变量同步到服务器 `server/.env`，避免手工拷贝。
+  - `deploy.sh` 新增后端 nohup 兜底重启与 AI 路由健康检查，减少“部署后仍跑旧进程”问题。
+- 安全防护：
+  - 新增 `.github/workflows/secret-guard.yml` 与 `scripts/security/guard-secrets.sh`，阻止密钥/私钥误提交。
 
 ## 2026-03-17（v2.6 - 动作微课十课重构与评论区能力升级）
 

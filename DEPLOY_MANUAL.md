@@ -158,11 +158,14 @@ bash deploy.sh
 脚本会自动完成：
 
 1. `git fetch + reset --hard + git lfs pull`  
-2. `npm ci && npm run build`  
-3. 同步 `dist/` 到 `/var/www/culture/`  
-4. 同步 `content/` 到 `/var/www/culture/content/`  
-5. 重启后端（pm2/systemd 二选一）  
-6. `nginx -t` 和 `nginx reload`  
+2. `npm ci --prefix server`（后端依赖）  
+3. `npm ci && npm run build`（前端构建）  
+4. 同步 `dist/` 到 `/var/www/culture/`  
+5. 同步 `content/` 到 `/var/www/culture/content/`  
+6. 同步部署时注入的 `VOLCENGINE_*` 到 `server/.env`  
+7. 重启后端（优先 pm2，其次 systemd，最后 nohup 兜底）  
+8. `nginx -t` 和 `nginx reload`  
+9. 健康检查（前端资源 + 后端 + AI 路由）  
 
 可选环境变量：
 
@@ -198,3 +201,16 @@ bash deploy.sh
 
 - `server/.env` 在仓库中被忽略，不会随 `git push` 同步。
 - 现在 `deploy.sh` 会在运行时读取 Actions 注入的 `VOLCENGINE_*`，自动写入/更新服务器 `server/.env`，再重启后端。
+- 如果服务器未配置 pm2/systemd，`deploy.sh` 会自动使用 nohup 启动 `server/index.js`，避免“代码更新但后端仍是旧进程”。
+
+---
+
+## 10. 密钥泄漏防护（CI）
+
+仓库新增工作流：`.github/workflows/secret-guard.yml`。
+
+- 触发：`push` / `pull_request`
+- 检查项：
+  - 私钥片段（如 `BEGIN OPENSSH PRIVATE KEY`）
+  - 非模板文件中的 `VOLCENGINE_API_KEY` / `VITE_VOLCENGINE_API_KEY` 赋值
+- 脚本：`scripts/security/guard-secrets.sh`

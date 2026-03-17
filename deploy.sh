@@ -11,6 +11,9 @@ set -euo pipefail
 #   PROJECT_DIR=/home/ubuntu/HZNU-Education-Technology-2026-Graduation-Project
 #   BACKEND_PM2_NAME=lantern-api
 #   BACKEND_SYSTEMD_SERVICE=hznu-backend
+#   BACKEND_PORT=3001
+#   BACKEND_ENTRY=/home/ubuntu/HZNU-Education-Technology-2026-Graduation-Project/server/index.js
+#   BACKEND_LOG_FILE=/tmp/culture-server.log
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="${PROJECT_DIR:-$SCRIPT_DIR}"
@@ -18,6 +21,9 @@ BRANCH_NAME="${BRANCH_NAME:-main}"
 WEB_ROOT="${WEB_ROOT:-/var/www/culture}"
 BACKEND_PM2_NAME="${BACKEND_PM2_NAME:-lantern-api}"
 BACKEND_SYSTEMD_SERVICE="${BACKEND_SYSTEMD_SERVICE:-hznu-backend}"
+BACKEND_PORT="${BACKEND_PORT:-3001}"
+BACKEND_ENTRY="${BACKEND_ENTRY:-$PROJECT_DIR/server/index.js}"
+BACKEND_LOG_FILE="${BACKEND_LOG_FILE:-/tmp/culture-server.log}"
 
 log() {
   printf '[deploy] %s\n' "$*"
@@ -109,15 +115,43 @@ restart_backend() {
     run_privileged systemctl restart "$BACKEND_SYSTEMD_SERVICE"
     return
   fi
-  log "Backend restart skipped (no pm2 app '$BACKEND_PM2_NAME' or systemd service '$BACKEND_SYSTEMD_SERVICE')."
+  log "No pm2/systemd backend manager detected. Use nohup fallback."
+
+  local old_pids
+  old_pids="$(lsof -tiTCP:${BACKEND_PORT} -sTCP:LISTEN || true)"
+  if [[ -n "$old_pids" ]]; then
+    log "Stopping existing backend listener on :$BACKEND_PORT ($old_pids)"
+    kill $old_pids >/dev/null 2>&1 || run_privileged kill $old_pids || true
+    sleep 1
+  fi
+
+  log "Starting backend via nohup: node $BACKEND_ENTRY"
+  nohup node "$BACKEND_ENTRY" > "$BACKEND_LOG_FILE" 2>&1 &
+  sleep 1
+
+  if curl -fsS "http://127.0.0.1:${BACKEND_PORT}/" >/dev/null 2>&1; then
+    log "Backend started via nohup (log: $BACKEND_LOG_FILE)."
+  else
+    fail "Backend failed to start via nohup. Check log: $BACKEND_LOG_FILE"
+  fi
 }
 
 health_check() {
   local api_ok=0
+  local ai_route_ok=0
+  local ai_status=000
   local asset_path
 
-  if curl -fsS http://127.0.0.1:3001/ >/dev/null 2>&1; then
+  if curl -fsS "http://127.0.0.1:${BACKEND_PORT}/" >/dev/null 2>&1; then
     api_ok=1
+  fi
+
+  ai_status="$(curl -sS -o /tmp/deploy_ai_route_check.json -w '%{http_code}' \
+    -X POST "http://127.0.0.1:${BACKEND_PORT}/api/ai/chat" \
+    -H 'Content-Type: application/json' \
+    -d '{"question":"health-check"}' || true)"
+  if [[ "$ai_status" != "404" && "$ai_status" != "000" ]]; then
+    ai_route_ok=1
   fi
 
   asset_path="$(grep -oE '/assets/index-[^"]+\.js' "$WEB_ROOT/index.html" | head -n 1 || true)"
@@ -131,10 +165,12 @@ health_check() {
     fail "Missing deployed content file: $WEB_ROOT/content/lessons.json"
   fi
 
-  if [[ "$api_ok" -eq 1 ]]; then
-    log "Health check passed (frontend + backend)."
+  if [[ "$api_ok" -eq 1 && "$ai_route_ok" -eq 1 ]]; then
+    log "Health check passed (frontend + backend + ai-route)."
+  elif [[ "$api_ok" -eq 1 ]]; then
+    log "Health check passed (frontend + backend); ai-route status: $ai_status."
   else
-    log "Health check passed for frontend; backend http://127.0.0.1:3001/ not reachable."
+    log "Health check passed for frontend; backend http://127.0.0.1:${BACKEND_PORT}/ not reachable."
   fi
 }
 
@@ -156,6 +192,9 @@ main() {
   if [[ ! -w "$PROJECT_DIR" ]]; then
     fail "No write permission on project dir: $PROJECT_DIR"
   fi
+
+  log "Install backend dependencies..."
+  npm ci --prefix server
 
   log "Install and build frontend..."
   npm ci

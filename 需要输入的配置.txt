@@ -11,16 +11,16 @@ AI功能已开发完成！
 你需要输入的内容（仅3项）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-打开项目根目录的 .env 文件，找到以下内容并填写：
+打开项目 `server/.env` 文件，填写以下内容：
 
-1. 关闭Mock模式：
-   VITE_ENABLE_MOCK=false
+1. 火山引擎API密钥：
+   VOLCENGINE_API_KEY=【在这里粘贴你的API Key】
 
-2. 火山引擎API密钥：
-   VITE_VOLCENGINE_API_KEY=【在这里粘贴你的API Key】
+2. 火山引擎端点ID：
+   VOLCENGINE_ENDPOINT_ID=【在这里粘贴你的Endpoint ID】
 
-3. 火山引擎端点ID：
-   VITE_VOLCENGINE_ENDPOINT_ID=【在这里粘贴你的Endpoint ID】
+3. 模型名称（可选）：
+   VOLCENGINE_MODEL=Doubao-1.5-pro-256k
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -57,9 +57,9 @@ AI功能已开发完成！
 配置示例（仅供参考）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-VITE_ENABLE_MOCK=false
-VITE_VOLCENGINE_API_KEY=ak-1234567890abcdefghijklmnopqrstuv
-VITE_VOLCENGINE_ENDPOINT_ID=ep-20250115-abc123def456
+VOLCENGINE_API_KEY=<YOUR_API_KEY>
+VOLCENGINE_ENDPOINT_ID=<YOUR_ENDPOINT_ID>
+VOLCENGINE_MODEL=Doubao-1.5-pro-256k
 
 注意: 使用你自己的真实值，不要复制上面的示例！
 
@@ -68,15 +68,12 @@ VITE_VOLCENGINE_ENDPOINT_ID=ep-20250115-abc123def456
 配置完成后的检查步骤
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. 保存 .env 文件
-2. 重启开发服务器:
-   - 按 Ctrl+C 停止
-   - 运行 npm run dev 启动
-3. 访问 http://localhost:5173/ai-qa
-4. 检查页面顶部状态:
-   应该显示: 火山引擎 AI (doubao-lite-32k)
-   绿色指示灯闪烁
-5. 测试提问，应该出现打字机效果
+1. 保存 `server/.env` 文件
+2. 前端根目录 `.env` 确认：
+   - VITE_ENABLE_MOCK=false
+   - VITE_API_URL=http://localhost:3001/api
+3. 重启后端服务（server）
+4. 访问 http://localhost:5173/ai-qa 测试提问
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

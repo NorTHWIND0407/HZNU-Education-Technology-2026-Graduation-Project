@@ -232,5 +232,12 @@ VITE_API_URL=http://localhost:3001/api
 ## 8. 维护约定
 
 - 真实数据库文件（`server/data/*.db`）不要提交到仓库。
+- 真实密钥只保存在 `server/.env` 与 GitHub Actions secrets，不要写入前端 `VITE_*` 配置。
 - 内容优先在 `content/*.json` 维护，不建议硬编码到页面组件。
 - 每次提交后同步更新 `CHANGELOG.md`，保持版本可追溯。
+
+## 9. 自动部署与可用性
+
+- `push main` 会触发 `.github/workflows/deploy.yml` 自动部署到生产服务器。
+- 部署时自动把 Actions secrets 中的 `VOLCENGINE_*` 写入服务器 `server/.env`，并重启后端。
+- 仓库启用 `.github/workflows/secret-guard.yml`，防止密钥/私钥误提交。
