@@ -121,6 +121,9 @@ export interface MicrodocComment {
   username: string
   displayName: string
   content: string
+  parentCommentId: number | null
+  likeCount: number
+  likedByMe: boolean
   createdAt: string
   updatedAt?: string
 }
@@ -321,11 +324,30 @@ export const microdocAPI = {
   async createComment(clipId: string, payload: {
     content: string
     visitorId?: string
+    parentCommentId?: number | null
   }): Promise<{ clipId: string; comment: MicrodocComment }> {
     const response = await apiClient.post<any, {
       success: boolean
       data: { clipId: string; comment: MicrodocComment }
     }>(`/microdoc/${encodeURIComponent(clipId)}/comments`, payload)
+    return response.data
+  },
+
+  async toggleCommentLike(clipId: string, commentId: number, visitorId?: string): Promise<{
+    clipId: string
+    commentId: number
+    likeCount: number
+    likedByMe: boolean
+  }> {
+    const response = await apiClient.post<any, {
+      success: boolean
+      data: {
+        clipId: string
+        commentId: number
+        likeCount: number
+        likedByMe: boolean
+      }
+    }>(`/microdoc/${encodeURIComponent(clipId)}/comments/${commentId}/like`, { visitorId })
     return response.data
   }
 }

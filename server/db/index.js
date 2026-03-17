@@ -69,6 +69,11 @@ function queryGet(sql, params = []) {
   return rows[0] || null
 }
 
+function tableHasColumn(tableName, columnName) {
+  const rows = queryAll(`PRAGMA table_info(${tableName})`)
+  return rows.some(row => String(row.name || '').toLowerCase() === String(columnName || '').toLowerCase())
+}
+
 function run(sql, params = []) {
   assertReady()
   db.run(sql, params)
@@ -128,11 +133,13 @@ function ensureMicrodocSchema() {
       username VARCHAR(80),
       display_name VARCHAR(120) NOT NULL,
       content TEXT NOT NULL,
+      parent_comment_id INTEGER,
       visitor_id VARCHAR(80),
       is_deleted BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (parent_comment_id) REFERENCES microdoc_comments(id) ON DELETE CASCADE
     );
   `)
 
@@ -149,9 +156,29 @@ function ensureMicrodocSchema() {
     );
   `)
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS microdoc_comment_likes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      comment_id INTEGER NOT NULL,
+      actor_key VARCHAR(120) NOT NULL,
+      user_id INTEGER,
+      visitor_id VARCHAR(80),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (comment_id) REFERENCES microdoc_comments(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+      UNIQUE(comment_id, actor_key)
+    );
+  `)
+
+  if (!tableHasColumn('microdoc_comments', 'parent_comment_id')) {
+    db.exec('ALTER TABLE microdoc_comments ADD COLUMN parent_comment_id INTEGER')
+  }
+
   db.exec('CREATE INDEX IF NOT EXISTS idx_microdoc_comments_clip ON microdoc_comments(clip_id)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_microdoc_comments_created ON microdoc_comments(created_at)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_microdoc_comments_parent ON microdoc_comments(parent_comment_id)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_microdoc_likes_clip ON microdoc_likes(clip_id)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_microdoc_comment_likes_comment ON microdoc_comment_likes(comment_id)')
 
   db.exec(`
     CREATE TRIGGER IF NOT EXISTS update_microdoc_comments_timestamp
@@ -709,20 +736,45 @@ function normalizeMicrodocComment(row) {
     username: row.username || '',
     displayName: row.display_name || '游客',
     content: row.content || '',
+    parentCommentId: row.parent_comment_id != null ? Number(row.parent_comment_id) : null,
+    likeCount: Number(row.like_count || 0),
+    likedByMe: Boolean(Number(row.liked_by_me || 0)),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
 }
 
 export const MicrodocDB = {
-  listComments(clipId, limit = 100) {
+  listComments(clipId, limit = 100, actorKey = null) {
     const rows = queryAll(
-      `SELECT id, clip_id, user_id, username, display_name, content, created_at, updated_at
-       FROM microdoc_comments
-       WHERE clip_id = ? AND is_deleted = 0
-       ORDER BY created_at DESC
+      `SELECT
+         c.id,
+         c.clip_id,
+         c.user_id,
+         c.username,
+         c.display_name,
+         c.content,
+         c.parent_comment_id,
+         c.created_at,
+         c.updated_at,
+         (
+           SELECT COUNT(*)
+           FROM microdoc_comment_likes cl
+           WHERE cl.comment_id = c.id
+         ) AS like_count,
+         CASE
+           WHEN ? IS NOT NULL AND EXISTS(
+             SELECT 1
+             FROM microdoc_comment_likes cl2
+             WHERE cl2.comment_id = c.id AND cl2.actor_key = ?
+           ) THEN 1
+           ELSE 0
+         END AS liked_by_me
+       FROM microdoc_comments c
+       WHERE c.clip_id = ? AND c.is_deleted = 0
+       ORDER BY c.created_at DESC, c.id DESC
        LIMIT ?`,
-      [clipId, Number(limit)]
+      [actorKey, actorKey, clipId, Number(limit)]
     )
     return rows.map(normalizeMicrodocComment)
   },
@@ -730,27 +782,59 @@ export const MicrodocDB = {
   createComment(commentData) {
     return run(
       `INSERT INTO microdoc_comments
-        (clip_id, user_id, username, display_name, content, visitor_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+        (clip_id, user_id, username, display_name, content, visitor_id, parent_comment_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         commentData.clip_id,
         normalizeNullable(commentData.user_id),
         normalizeNullable(commentData.username),
         commentData.display_name,
         commentData.content,
-        normalizeNullable(commentData.visitor_id)
+        normalizeNullable(commentData.visitor_id),
+        normalizeNullable(commentData.parent_comment_id)
       ]
     )
   },
 
-  findCommentById(id) {
+  findCommentById(id, actorKey = null) {
     const row = queryGet(
-      `SELECT id, clip_id, user_id, username, display_name, content, created_at, updated_at
+      `SELECT
+         c.id,
+         c.clip_id,
+         c.user_id,
+         c.username,
+         c.display_name,
+         c.content,
+         c.parent_comment_id,
+         c.created_at,
+         c.updated_at,
+         (
+           SELECT COUNT(*)
+           FROM microdoc_comment_likes cl
+           WHERE cl.comment_id = c.id
+         ) AS like_count,
+         CASE
+           WHEN ? IS NOT NULL AND EXISTS(
+             SELECT 1
+             FROM microdoc_comment_likes cl2
+             WHERE cl2.comment_id = c.id AND cl2.actor_key = ?
+           ) THEN 1
+           ELSE 0
+         END AS liked_by_me
+       FROM microdoc_comments c
+       WHERE c.id = ?`,
+      [actorKey, actorKey, Number(id)]
+    )
+    return normalizeMicrodocComment(row)
+  },
+
+  getCommentMetaById(id) {
+    return queryGet(
+      `SELECT id, clip_id, parent_comment_id, is_deleted
        FROM microdoc_comments
        WHERE id = ?`,
       [Number(id)]
     )
-    return normalizeMicrodocComment(row)
   },
 
   countLikes(clipId) {
@@ -787,6 +871,43 @@ export const MicrodocDB = {
     return {
       liked,
       likeCount: this.countLikes(clipId)
+    }
+  },
+
+  countCommentLikes(commentId) {
+    const row = queryGet('SELECT COUNT(*) AS count FROM microdoc_comment_likes WHERE comment_id = ?', [Number(commentId)])
+    return Number(row?.count || 0)
+  },
+
+  hasCommentLiked(commentId, actorKey) {
+    const row = queryGet(
+      'SELECT id FROM microdoc_comment_likes WHERE comment_id = ? AND actor_key = ?',
+      [Number(commentId), actorKey]
+    )
+    return Boolean(row?.id)
+  },
+
+  toggleCommentLike({ commentId, actorKey, userId = null, visitorId = null }) {
+    const existing = queryGet(
+      'SELECT id FROM microdoc_comment_likes WHERE comment_id = ? AND actor_key = ?',
+      [Number(commentId), actorKey]
+    )
+
+    let liked = false
+    if (existing?.id) {
+      run('DELETE FROM microdoc_comment_likes WHERE id = ?', [Number(existing.id)])
+    } else {
+      run(
+        `INSERT INTO microdoc_comment_likes (comment_id, actor_key, user_id, visitor_id)
+         VALUES (?, ?, ?, ?)`,
+        [Number(commentId), actorKey, normalizeNullable(userId), normalizeNullable(visitorId)]
+      )
+      liked = true
+    }
+
+    return {
+      liked,
+      likeCount: this.countCommentLikes(commentId)
     }
   }
 }

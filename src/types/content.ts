@@ -14,6 +14,8 @@ export type Lesson = {
   clip: string
   beats: number
   steps: string[]
+  summary?: string
+  durationHint?: string
 }
 
 export type HandbookQuiz = {

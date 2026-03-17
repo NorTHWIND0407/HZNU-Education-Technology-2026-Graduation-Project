@@ -13,12 +13,16 @@ type ClipDiscussionState = {
   isLoading: boolean
   isSubmitting: boolean
   isLiking: boolean
+  isReplySubmitting: boolean
   commentLoginRequired: boolean
   likeCount: number
   likedByMe: boolean
   draft: string
+  replyDraft: string
+  replyToCommentId: number | null
   error: string
   comments: MicrodocComment[]
+  commentLikeLoading: Record<number, boolean>
 }
 
 function createDiscussionState(): ClipDiscussionState {
@@ -27,12 +31,16 @@ function createDiscussionState(): ClipDiscussionState {
     isLoading: true,
     isSubmitting: false,
     isLiking: false,
+    isReplySubmitting: false,
     commentLoginRequired: true,
     likeCount: 0,
     likedByMe: false,
     draft: '',
+    replyDraft: '',
+    replyToCommentId: null,
     error: '',
-    comments: []
+    comments: [],
+    commentLikeLoading: {}
   }
 }
 
@@ -59,6 +67,49 @@ function formatCommentTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
   return date.toLocaleString('zh-CN', { hour12: false })
+}
+
+function updateCommentLikeSnapshot(
+  comments: MicrodocComment[],
+  commentId: number,
+  likeCount: number,
+  likedByMe?: boolean
+) {
+  return comments.map(comment => {
+    if (comment.id !== commentId) return comment
+    return {
+      ...comment,
+      likeCount,
+      likedByMe: typeof likedByMe === 'boolean' ? likedByMe : comment.likedByMe
+    }
+  })
+}
+
+function buildCommentTree(comments: MicrodocComment[]) {
+  const topLevel: MicrodocComment[] = []
+  const repliesByParent = new Map<number, MicrodocComment[]>()
+
+  for (const comment of comments) {
+    if (comment.parentCommentId == null) {
+      topLevel.push(comment)
+      continue
+    }
+    const list = repliesByParent.get(comment.parentCommentId) || []
+    list.push(comment)
+    repliesByParent.set(comment.parentCommentId, list)
+  }
+
+  const toTime = (value: string) => {
+    const ts = new Date(value).getTime()
+    return Number.isNaN(ts) ? 0 : ts
+  }
+
+  topLevel.sort((a, b) => toTime(b.createdAt) - toTime(a.createdAt) || b.id - a.id)
+  for (const list of repliesByParent.values()) {
+    list.sort((a, b) => toTime(a.createdAt) - toTime(b.createdAt) || a.id - b.id)
+  }
+
+  return { topLevel, repliesByParent }
 }
 
 export default function Microdoc() {
@@ -162,6 +213,22 @@ export default function Microdoc() {
             }
           })
         }
+
+        if (
+          payload?.type === 'microdoc_comment_like_updated' &&
+          typeof payload?.clipId === 'string' &&
+          typeof payload?.commentId === 'number'
+        ) {
+          updateClipState(payload.clipId, state => ({
+            ...state,
+            comments: updateCommentLikeSnapshot(
+              state.comments,
+              Number(payload.commentId),
+              Number(payload.likeCount || 0),
+              payload.actorKey === actorKey ? Boolean(payload.liked) : undefined
+            )
+          }))
+        }
       } catch (err) {
         console.error('[Microdoc] WebSocket message parse error:', err)
       }
@@ -234,6 +301,83 @@ export default function Microdoc() {
     }
   }, [discussionByClip, updateClipState, visitorId, user])
 
+  const onToggleReply = React.useCallback((clipId: string, commentId: number) => {
+    updateClipState(clipId, state => ({
+      ...state,
+      error: '',
+      replyToCommentId: state.replyToCommentId === commentId ? null : commentId,
+      replyDraft: state.replyToCommentId === commentId ? '' : state.replyDraft
+    }))
+  }, [updateClipState])
+
+  const onReplyDraftChange = React.useCallback((clipId: string, value: string) => {
+    updateClipState(clipId, state => ({ ...state, replyDraft: value, error: '' }))
+  }, [updateClipState])
+
+  const onSubmitReply = React.useCallback(async (clipId: string, parentCommentId: number) => {
+    const current = discussionByClip[clipId] || createDiscussionState()
+    const content = current.replyDraft.trim()
+    if (current.commentLoginRequired && !user) {
+      updateClipState(clipId, state => ({ ...state, error: '当前仅登录用户可评论，请先登录' }))
+      return
+    }
+    if (!content) {
+      updateClipState(clipId, state => ({ ...state, error: '回复内容不能为空' }))
+      return
+    }
+    if (content.length > COMMENT_MAX_LENGTH) {
+      updateClipState(clipId, state => ({ ...state, error: `评论最多 ${COMMENT_MAX_LENGTH} 个字符` }))
+      return
+    }
+
+    updateClipState(clipId, state => ({ ...state, isReplySubmitting: true, error: '' }))
+    try {
+      const result = await microdocAPI.createComment(clipId, {
+        content,
+        visitorId,
+        parentCommentId
+      })
+      updateClipState(clipId, state => {
+        const exists = state.comments.some(item => item.id === result.comment.id)
+        return {
+          ...state,
+          isReplySubmitting: false,
+          replyDraft: '',
+          replyToCommentId: null,
+          comments: exists ? state.comments : [result.comment, ...state.comments]
+        }
+      })
+    } catch (err) {
+      updateClipState(clipId, state => ({
+        ...state,
+        isReplySubmitting: false,
+        error: (err as Error).message || '回复发布失败'
+      }))
+    }
+  }, [discussionByClip, updateClipState, visitorId, user])
+
+  const onToggleCommentLike = React.useCallback(async (clipId: string, commentId: number) => {
+    updateClipState(clipId, state => ({
+      ...state,
+      error: '',
+      commentLikeLoading: { ...state.commentLikeLoading, [commentId]: true }
+    }))
+    try {
+      const result = await microdocAPI.toggleCommentLike(clipId, commentId, visitorId)
+      updateClipState(clipId, state => ({
+        ...state,
+        comments: updateCommentLikeSnapshot(state.comments, commentId, result.likeCount, result.likedByMe),
+        commentLikeLoading: { ...state.commentLikeLoading, [commentId]: false }
+      }))
+    } catch (err) {
+      updateClipState(clipId, state => ({
+        ...state,
+        commentLikeLoading: { ...state.commentLikeLoading, [commentId]: false },
+        error: (err as Error).message || '评论点赞失败，请稍后重试'
+      }))
+    }
+  }, [updateClipState, visitorId])
+
   return (
     <div className="mx-auto w-full max-w-[1360px] space-y-6">
       <header>
@@ -248,6 +392,83 @@ export default function Microdoc() {
           {playlist.map(item => {
             const discussion = discussionByClip[item.id] || createDiscussionState()
             const canComment = !discussion.commentLoginRequired || Boolean(user)
+            const tree = buildCommentTree(discussion.comments)
+
+            const renderCommentNode = (comment: MicrodocComment, depth = 0): React.ReactNode => {
+              const children = tree.repliesByParent.get(comment.id) || []
+              const isReplying = discussion.replyToCommentId === comment.id
+              const isCommentLikeLoading = Boolean(discussion.commentLikeLoading[comment.id])
+              const depthIndent = Math.min(depth, 5) * 16
+
+              return (
+                <li key={comment.id} className="space-y-2">
+                  <article
+                    className="rounded-md border border-gray-200 bg-white/70 px-3 py-2"
+                    style={depthIndent > 0 ? { marginLeft: `${depthIndent}px` } : undefined}
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2 text-xs text-gray-500">
+                      <span className="font-medium text-ink-700 dark:text-gray-200">{comment.displayName}</span>
+                      <span>{formatCommentTime(comment.createdAt)}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap break-words text-sm text-ink-700 dark:text-gray-200">
+                      {comment.content}
+                    </p>
+                    <div className="mt-2 flex items-center gap-3 text-xs">
+                      <button
+                        type="button"
+                        disabled={isCommentLikeLoading}
+                        className={`rounded px-2 py-1 transition-colors ${
+                          comment.likedByMe
+                            ? 'bg-brand-50 text-brand-700'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                        onClick={() => onToggleCommentLike(item.id, comment.id)}
+                      >
+                        {comment.likedByMe ? '👍 已赞' : '👍 点赞'} {comment.likeCount}
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded px-2 py-1 text-gray-600 transition-colors hover:bg-gray-100"
+                        onClick={() => onToggleReply(item.id, comment.id)}
+                      >
+                        {isReplying ? '取消回复' : '回复'}
+                      </button>
+                    </div>
+
+                    {isReplying && (
+                      <div className="mt-3 space-y-2 rounded-md border border-gray-200 bg-white p-3">
+                        <textarea
+                          className="w-full min-h-[72px] rounded-md border bg-transparent px-3 py-2 text-sm"
+                          value={discussion.replyDraft}
+                          maxLength={COMMENT_MAX_LENGTH}
+                          disabled={!canComment || discussion.isReplySubmitting}
+                          onChange={event => onReplyDraftChange(item.id, event.target.value)}
+                          placeholder={canComment ? '写下你的回复...' : '登录后可回复'}
+                        />
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{discussion.replyDraft.length}/{COMMENT_MAX_LENGTH}</span>
+                          <button
+                            type="button"
+                            className="btn !px-3 !py-1.5 text-xs"
+                            disabled={!canComment || discussion.isReplySubmitting}
+                            onClick={() => onSubmitReply(item.id, comment.id)}
+                          >
+                            {!canComment ? '登录后可回复' : discussion.isReplySubmitting ? '发布中...' : '发布回复'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </article>
+
+                  {children.length > 0 && (
+                    <ul className="space-y-2">
+                      {children.map(child => renderCommentNode(child, depth + 1))}
+                    </ul>
+                  )}
+                </li>
+              )
+            }
+
             return (
               <li key={item.id} className="space-y-3">
                 <h3 className="font-medium mb-2">{item.title}</h3>
@@ -327,21 +548,11 @@ export default function Microdoc() {
 
                       {discussion.isLoading ? (
                         <p className="text-sm text-gray-500">评论加载中...</p>
-                      ) : discussion.comments.length === 0 ? (
+                      ) : tree.topLevel.length === 0 ? (
                         <p className="text-sm text-gray-500">暂无评论，欢迎发布第一条评论。</p>
                       ) : (
                         <ul className="space-y-3">
-                          {discussion.comments.map(comment => (
-                            <li key={comment.id} className="rounded-md border border-gray-200 bg-white/60 px-3 py-2">
-                              <div className="mb-1 flex items-center justify-between gap-2 text-xs text-gray-500">
-                                <span className="font-medium text-ink-700 dark:text-gray-200">{comment.displayName}</span>
-                                <span>{formatCommentTime(comment.createdAt)}</span>
-                              </div>
-                              <p className="whitespace-pre-wrap break-words text-sm text-ink-700 dark:text-gray-200">
-                                {comment.content}
-                              </p>
-                            </li>
-                          ))}
+                          {tree.topLevel.map(comment => renderCommentNode(comment))}
                         </ul>
                       )}
                     </div>

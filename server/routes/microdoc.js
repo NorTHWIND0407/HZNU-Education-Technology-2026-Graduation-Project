@@ -21,6 +21,12 @@ function normalizeVisitorId(rawVisitorId) {
   return visitorId
 }
 
+function normalizeCommentId(rawCommentId) {
+  const id = Number(rawCommentId)
+  if (!Number.isInteger(id) || id <= 0) return null
+  return id
+}
+
 function authOptional(req, _res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '')
   if (!token) {
@@ -75,7 +81,7 @@ router.get('/:clipId', authOptional, (req, res) => {
     const actor = resolveActor(req, req.query.visitorId, false)
     const likeCount = MicrodocDB.countLikes(clipId)
     const likedByMe = actor.actorKey ? MicrodocDB.hasLiked(clipId, actor.actorKey) : false
-    const comments = MicrodocDB.listComments(clipId, 200)
+    const comments = MicrodocDB.listComments(clipId, 200, actor.actorKey)
 
     res.json({
       success: true,
@@ -145,6 +151,7 @@ router.post('/:clipId/comments', authOptional, (req, res) => {
     }
 
     const content = String(req.body?.content || '').trim()
+    const parentCommentId = req.body?.parentCommentId == null ? null : normalizeCommentId(req.body?.parentCommentId)
     if (!content) {
       return res.status(400).json({ error: 'Invalid content', message: '评论内容不能为空' })
     }
@@ -153,6 +160,9 @@ router.post('/:clipId/comments', authOptional, (req, res) => {
         error: 'Content too long',
         message: `评论最多 ${COMMENT_MAX_LENGTH} 个字符`
       })
+    }
+    if (req.body?.parentCommentId != null && !parentCommentId) {
+      return res.status(400).json({ error: 'Invalid parentCommentId', message: '回复目标不合法' })
     }
 
     if (COMMENT_LOGIN_REQUIRED && !req.user) {
@@ -174,15 +184,26 @@ router.post('/:clipId/comments', authOptional, (req, res) => {
       ? (req.user.displayName || req.user.username || '用户')
       : `游客${String(actor.visitorId).slice(-4)}`
 
+    if (parentCommentId) {
+      const parent = MicrodocDB.getCommentMetaById(parentCommentId)
+      if (!parent || Number(parent.is_deleted || 0) === 1) {
+        return res.status(404).json({ error: 'Parent comment not found', message: '目标评论不存在或已删除' })
+      }
+      if (parent.clip_id !== clipId) {
+        return res.status(400).json({ error: 'Parent mismatch', message: '回复目标与当前视频不匹配' })
+      }
+    }
+
     const created = MicrodocDB.createComment({
       clip_id: clipId,
       user_id: actor.userId,
       username: req.user?.username || null,
       display_name: displayName,
       content,
-      visitor_id: actor.visitorId
+      visitor_id: actor.visitorId,
+      parent_comment_id: parentCommentId
     })
-    const comment = MicrodocDB.findCommentById(created.lastInsertRowid)
+    const comment = MicrodocDB.findCommentById(created.lastInsertRowid, actor.actorKey)
 
     broadcast('microdoc', {
       type: 'microdoc_comment_added',
@@ -201,6 +222,64 @@ router.post('/:clipId/comments', authOptional, (req, res) => {
   } catch (err) {
     console.error('[Microdoc] Create comment error:', err)
     res.status(500).json({ error: 'Failed to create comment', message: '发布评论失败，请稍后重试' })
+  }
+})
+
+router.post('/:clipId/comments/:commentId/like', authOptional, (req, res) => {
+  try {
+    const clipId = normalizeClipId(req.params.clipId)
+    const commentId = normalizeCommentId(req.params.commentId)
+    if (!clipId) {
+      return res.status(400).json({ error: 'Invalid clipId', message: '视频标识不合法' })
+    }
+    if (!commentId) {
+      return res.status(400).json({ error: 'Invalid commentId', message: '评论标识不合法' })
+    }
+
+    const actor = resolveActor(req, req.body?.visitorId, true)
+    if (!actor) {
+      return res.status(400).json({
+        error: 'Missing actor',
+        message: '请先登录或刷新页面后重试点赞'
+      })
+    }
+
+    const comment = MicrodocDB.getCommentMetaById(commentId)
+    if (!comment || Number(comment.is_deleted || 0) === 1) {
+      return res.status(404).json({ error: 'Comment not found', message: '评论不存在或已删除' })
+    }
+    if (comment.clip_id !== clipId) {
+      return res.status(400).json({ error: 'Comment mismatch', message: '评论与当前视频不匹配' })
+    }
+
+    const result = MicrodocDB.toggleCommentLike({
+      commentId,
+      actorKey: actor.actorKey,
+      userId: actor.userId,
+      visitorId: actor.visitorId
+    })
+
+    broadcast('microdoc', {
+      type: 'microdoc_comment_like_updated',
+      clipId,
+      commentId,
+      likeCount: result.likeCount,
+      actorKey: actor.actorKey,
+      liked: result.liked
+    })
+
+    res.json({
+      success: true,
+      data: {
+        clipId,
+        commentId,
+        likeCount: result.likeCount,
+        likedByMe: result.liked
+      }
+    })
+  } catch (err) {
+    console.error('[Microdoc] Toggle comment like error:', err)
+    res.status(500).json({ error: 'Failed to toggle comment like', message: '评论点赞失败，请稍后重试' })
   }
 })
 

@@ -199,15 +199,18 @@ CREATE TABLE microdoc_comments (
   username VARCHAR(80),                        -- 冗余用户名
   display_name VARCHAR(120) NOT NULL,          -- 显示名称（用户名或游客名）
   content TEXT NOT NULL,                       -- 评论内容
+  parent_comment_id INTEGER,                   -- 父评论ID（为空表示一级评论）
   visitor_id VARCHAR(80),                      -- 匿名访客ID
   is_deleted BOOLEAN DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (parent_comment_id) REFERENCES microdoc_comments(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_microdoc_comments_clip ON microdoc_comments(clip_id);
 CREATE INDEX idx_microdoc_comments_created ON microdoc_comments(created_at);
+CREATE INDEX idx_microdoc_comments_parent ON microdoc_comments(parent_comment_id);
 
 CREATE TABLE microdoc_likes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -221,6 +224,20 @@ CREATE TABLE microdoc_likes (
 );
 
 CREATE INDEX idx_microdoc_likes_clip ON microdoc_likes(clip_id);
+
+CREATE TABLE microdoc_comment_likes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  comment_id INTEGER NOT NULL,                 -- 评论ID
+  actor_key VARCHAR(120) NOT NULL,             -- 点赞主体唯一键（user:1 / visitor:xxx）
+  user_id INTEGER,                             -- 登录用户ID（匿名可为空）
+  visitor_id VARCHAR(80),                      -- 匿名访客ID
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (comment_id) REFERENCES microdoc_comments(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE(comment_id, actor_key)
+);
+
+CREATE INDEX idx_microdoc_comment_likes_comment ON microdoc_comment_likes(comment_id);
 
 -- ============================================
 -- 课程资源表 (Course Resources)
