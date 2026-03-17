@@ -18,6 +18,8 @@ jobs:
       VOLCENGINE_API_KEY: ${{ secrets.PROD_VOLCENGINE_API_KEY }}
       VOLCENGINE_ENDPOINT_ID: ${{ secrets.PROD_VOLCENGINE_ENDPOINT_ID }}
       VOLCENGINE_MODEL: ${{ secrets.PROD_VOLCENGINE_MODEL }}
+      FRONTEND_API_URL: ${{ secrets.PROD_FRONTEND_API_URL }}
+      FRONTEND_ENABLE_MOCK: ${{ secrets.PROD_FRONTEND_ENABLE_MOCK }}
     steps:
       - name: Deploy Over SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -26,7 +28,7 @@ jobs:
           username: ${{ secrets.PROD_SSH_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           port: ${{ secrets.PROD_SSH_PORT }}
-          envs: VOLCENGINE_API_KEY,VOLCENGINE_ENDPOINT_ID,VOLCENGINE_MODEL
+          envs: VOLCENGINE_API_KEY,VOLCENGINE_ENDPOINT_ID,VOLCENGINE_MODEL,FRONTEND_API_URL,FRONTEND_ENABLE_MOCK
           script_stop: true
           script: |
             set -euo pipefail

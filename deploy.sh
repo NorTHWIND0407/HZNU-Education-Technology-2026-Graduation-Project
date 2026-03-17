@@ -14,6 +14,8 @@ set -euo pipefail
 #   BACKEND_PORT=3001
 #   BACKEND_ENTRY=/home/ubuntu/HZNU-Education-Technology-2026-Graduation-Project/server/index.js
 #   BACKEND_LOG_FILE=/tmp/culture-server.log
+#   FRONTEND_API_URL=https://culture.lok666.com/api
+#   FRONTEND_ENABLE_MOCK=false
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="${PROJECT_DIR:-$SCRIPT_DIR}"
@@ -24,6 +26,8 @@ BACKEND_SYSTEMD_SERVICE="${BACKEND_SYSTEMD_SERVICE:-hznu-backend}"
 BACKEND_PORT="${BACKEND_PORT:-3001}"
 BACKEND_ENTRY="${BACKEND_ENTRY:-$PROJECT_DIR/server/index.js}"
 BACKEND_LOG_FILE="${BACKEND_LOG_FILE:-/tmp/culture-server.log}"
+FRONTEND_API_URL="${FRONTEND_API_URL:-}"
+FRONTEND_ENABLE_MOCK="${FRONTEND_ENABLE_MOCK:-false}"
 
 log() {
   printf '[deploy] %s\n' "$*"
@@ -86,6 +90,31 @@ sync_backend_ai_env() {
   else
     log "No deploy-time AI env provided; keep existing server/.env values."
   fi
+}
+
+sync_frontend_build_env() {
+  local env_file="$PROJECT_DIR/.env.production"
+
+  if [[ ! -f "$env_file" ]]; then
+    touch "$env_file"
+  fi
+
+  if [[ -n "$FRONTEND_API_URL" ]]; then
+    upsert_env_var "$env_file" "VITE_API_URL" "$FRONTEND_API_URL"
+  elif ! grep -q '^VITE_API_URL=' "$env_file"; then
+    upsert_env_var "$env_file" "VITE_API_URL" "https://culture.lok666.com/api"
+  fi
+
+  upsert_env_var "$env_file" "VITE_ENABLE_MOCK" "$FRONTEND_ENABLE_MOCK"
+
+  if ! grep -q '^VITE_I18N_DEFAULT=' "$env_file"; then
+    upsert_env_var "$env_file" "VITE_I18N_DEFAULT" "zh"
+  fi
+  if ! grep -q '^VITE_USE_AR=' "$env_file"; then
+    upsert_env_var "$env_file" "VITE_USE_AR" "true"
+  fi
+
+  log "Synced frontend production env (.env.production)."
 }
 
 detect_remote() {
@@ -195,6 +224,8 @@ main() {
 
   log "Install backend dependencies..."
   npm ci --prefix server
+
+  sync_frontend_build_env
 
   log "Install and build frontend..."
   npm ci

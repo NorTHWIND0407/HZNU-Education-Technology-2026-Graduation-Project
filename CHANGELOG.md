@@ -20,6 +20,7 @@
   - `.github/workflows/deploy.yml` 新增 `VOLCENGINE_*` secrets 注入。
   - `deploy.sh` 支持将部署时环境变量同步到服务器 `server/.env`，避免手工拷贝。
   - `deploy.sh` 新增后端 nohup 兜底重启与 AI 路由健康检查，减少“部署后仍跑旧进程”问题。
+  - 部署时自动生成/更新前端 `/.env.production`（`VITE_API_URL`、`VITE_ENABLE_MOCK`），避免线上误用 Mock。
 - 安全防护：
   - 新增 `.github/workflows/secret-guard.yml` 与 `scripts/security/guard-secrets.sh`，阻止密钥/私钥误提交。
   - `README.md` / `DEPLOY_MANUAL.md` 新增“开源复用必读”，明确 fork 后需自行配置 `server/.env` 与 GitHub Secrets。

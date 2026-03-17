@@ -189,6 +189,8 @@ REMOTE_NAME=origin BRANCH_NAME=main WEB_ROOT=/var/www/culture bash deploy.sh
 - `PROD_VOLCENGINE_API_KEY`：后端 AI 密钥
 - `PROD_VOLCENGINE_ENDPOINT_ID`：后端 AI 端点 ID
 - `PROD_VOLCENGINE_MODEL`：后端 AI 模型（可选，建议 `Doubao-1.5-pro-256k`）
+- `PROD_FRONTEND_API_URL`：前端生产 API 地址（示例 `https://culture.lok666.com/api`）
+- `PROD_FRONTEND_ENABLE_MOCK`：前端是否使用 Mock（可选，建议 `false`）
 
 工作流执行逻辑：
 
@@ -201,6 +203,7 @@ bash deploy.sh
 
 - `server/.env` 在仓库中被忽略，不会随 `git push` 同步。
 - 现在 `deploy.sh` 会在运行时读取 Actions 注入的 `VOLCENGINE_*`，自动写入/更新服务器 `server/.env`，再重启后端。
+- `deploy.sh` 会在构建前自动写入 `/.env.production`（`VITE_API_URL`、`VITE_ENABLE_MOCK`），避免前端误用 Mock 模式。
 - 如果服务器未配置 pm2/systemd，`deploy.sh` 会自动使用 nohup 启动 `server/index.js`，避免“代码更新但后端仍是旧进程”。
 - 你 fork 到其他 GitHub 仓库后，也必须在“新仓库”重新配置同名 Secrets，原仓库 Secrets 不会继承。
 
