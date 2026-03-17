@@ -4,7 +4,7 @@
 
 ## 2026-03-17（v2.7 - AI 配置迁移到后端代理）
 
-对应提交：`待提交`
+对应提交：`f98c27ea`
 
 - AI 配置迁移：
   - 新增后端 AI 路由 `server/routes/ai.js`，提供 `POST /api/ai/chat` 与 `POST /api/ai/chat/stream`。
