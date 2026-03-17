@@ -36,7 +36,7 @@ export default function Home() {
     { title: lang === 'zh' ? '互动式教学' : 'Interactive Learning', desc: lang === 'zh' ? '寓教于乐，趣味学习' : 'Learning Through Play, Engaging Content' },
     { title: lang === 'zh' ? '文化传承' : 'Heritage Preservation', desc: lang === 'zh' ? '非遗保护，创新发展' : 'Intangible Heritage, Innovative Development' },
   ]
-  const springGalaVideoSrc = '/videos/%5B2026%E5%BC%80%E9%97%A8%E8%BF%8E%E6%98%A5%E6%99%9A%5D%E3%80%8A%E7%AB%B9%E9%A9%AC%E8%B8%8F%E7%81%AF%E3%80%8B%20%E8%A1%A8%E6%BC%94%E8%80%85%EF%BC%9A%E6%9D%AD%E5%B7%9E%E5%B8%82%E4%B8%B4%E5%B9%B3%E5%8C%BA%E7%BE%A4%E6%98%9F%E6%BB%9A%E7%81%AF%E8%89%BA%E6%9C%AF%E5%9B%A2.mp4'
+  const springGalaVideoSrc = '/videos/spring-festival-gala-2026-zhuma-tadeng.mp4'
 
   return (
     <div className="space-y-10 md:space-y-11 animate-fade-in">
