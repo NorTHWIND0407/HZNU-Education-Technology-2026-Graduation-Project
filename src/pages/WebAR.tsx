@@ -1,25 +1,41 @@
+import { Link } from 'react-router-dom'
 import ARViewer from '../components/ARViewer'
 
 export default function WebAR() {
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-xl font-semibold">WebAR｜滚灯结构与学科融合（占位）</h1>
-        <p className="text-sm text-gray-500">默认走设备支持检测 + Mock 引导。TODO: 将 /public/models/lantern.glb 替换为真实模型。</p>
+        <h1 className="text-xl font-semibold">WebAR｜临平滚灯交互展示</h1>
+        <p className="text-sm text-gray-500">
+          本页已接入 Three.js + WebXR 命中测试，可在支持设备上进行真实 AR 放置、旋转与自由缩放。
+        </p>
       </header>
+
       <ARViewer />
-      <section className="grid sm:grid-cols-2 gap-4">
-        {['语文','美术','音乐','科学'].map((s, i) => (
-          <div key={i} className="card p-3">
-            <h3 className="font-medium">{s} 融合点（占位）</h3>
-            <p className="text-sm text-gray-500">TODO: 在模型零件上绑定交互点，展示 {s} 相关知识与引导。</p>
-          </div>
-        ))}
+
+      <section className="grid gap-4 sm:grid-cols-2">
+        <div className="card p-3">
+          <h3 className="font-medium">操作说明</h3>
+          <p className="text-sm text-gray-500">进入 AR 后先寻找平面，再点击放置；单指拖拽旋转，双指捏合可无级缩放。</p>
+        </div>
+
+        <div className="card p-3">
+          <h3 className="font-medium">兼容说明</h3>
+          <p className="text-sm text-gray-500">优先支持 Android + Chrome（HTTPS）。iOS Safari 目前暂不支持标准 WebXR immersive-ar。</p>
+        </div>
       </section>
+
+      <section className="card p-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="font-medium">扩展发布</h3>
+          <p className="text-sm text-gray-500">若要提供 Unity 安装包或源码下载，请进入模块下载中心统一发布。</p>
+        </div>
+        <Link to="/module-download" className="btn">进入模块下载中心</Link>
+      </section>
+
       <aside className="text-xs text-gray-500">
-        模型替换步骤：将 GLB 放到 /public/models/lantern.glb；建议三角面数 &lt; 50k，贴图不超过 1024px；使用 Draco/meshopt 压缩；命名分层。
+        模型文件请放入 `public/models/rolling-lantern.glb`（兼容 `public/models/lantern.glb`）。若未提供模型，页面会自动使用占位滚灯。
       </aside>
     </div>
   )
 }
-

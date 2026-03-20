@@ -9,6 +9,7 @@ import Microdoc from './pages/Microdoc'
 import Lessons from './pages/Lessons'
 import Handbook from './pages/H5Handbook'
 import WebAR from './pages/WebAR'
+import ModuleDownload from './pages/ModuleDownload'
 import AIQA from './pages/AIQA'
 import Feedback from './pages/Feedback'
 import Login from './pages/Login'
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
       { path: 'resources', element: <Resources /> },
       { path: 'h5-handbook', element: <Handbook /> },
       { path: 'webar', element: <WebAR /> },
+      { path: 'module-download', element: <ModuleDownload /> },
       { path: 'ai-qa', element: <AIQA /> },
       // 反馈页面需要登录
       {

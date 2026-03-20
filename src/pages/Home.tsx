@@ -28,6 +28,7 @@ export default function Home() {
     { to: '/webar', title: 'module_webar_title', desc: 'module_webar_desc' },
     { to: '/ai-qa', title: 'module_aiqa_title', desc: 'module_aiqa_desc' },
     { to: '/feedback', title: 'module_feedback_title', desc: 'module_feedback_desc' },
+    { to: '/module-download', title: 'module_download_title', desc: 'module_download_desc' },
   ]
 
   const features = [

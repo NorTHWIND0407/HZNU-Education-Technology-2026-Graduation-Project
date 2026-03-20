@@ -23,6 +23,7 @@ export default function Nav() {
     { to: '/webar', label: 'nav_webar' },
     { to: '/ai-qa', label: 'nav_aiqa' },
     { to: '/feedback', label: 'nav_feedback' },
+    { to: '/module-download', label: 'nav_download_module' },
   ]
 
   const roleBadgeClass =

@@ -2,6 +2,30 @@
 
 本文档按日期记录项目的重要变更。以下内容已与当前 Git 历史逐条对齐（截至 2026-03-16）。
 
+## 2026-03-20（v2.8 - WebAR 实装与 Unity 模块下载中心）
+
+对应提交：`待补充`
+
+- WebAR 从占位模式升级为真实实现：
+  - `src/components/ARViewer.tsx` 由 A-Frame CDN Mock 改为 Three.js + WebXR（`immersive-ar` + `hit-test`）。
+  - 支持平面命中放置、单指/鼠标拖拽旋转、双指捏合/滚轮无级缩放、风格切换与重置。
+  - 支持模型自动加载与降级：优先 `/public/models/rolling-lantern.glb`，兼容 `/public/models/lantern.glb`，缺失时启用占位滚灯。
+- WebAR 页面与说明文案更新：
+  - `src/pages/WebAR.tsx` 改为真实 WebXR 说明，并新增“进入模块下载中心”入口。
+  - `public/models/README.txt` 更新模型命名与放置规范。
+- 新增“模块下载中心”：
+  - 新增页面 `src/pages/ModuleDownload.tsx`，支持 WebAR 在线入口、Unity 程序包下载区、开发复用包下载区。
+  - 页面通过 `HEAD` 自动检测 `/public/downloads` 下文件是否存在，动态显示“下载文件”或“待上传”。
+  - 新增 `public/downloads/README.txt`，规范 APK/ZIP/unitypackage 命名。
+- 全站接入：
+  - `src/router.tsx` 新增路由 `/module-download`。
+  - `src/components/Nav.tsx` 新增导航项“模块下载”。
+  - `src/pages/Home.tsx` 新增模块卡片“模块下载中心”。
+  - `src/lib/i18n.ts` 新增中英文文案键 `nav_download_module`、`module_download_title`、`module_download_desc`。
+- 工程与构建：
+  - 新增依赖 `three` 与 `@types/three`，并在 `tsconfig.json` 添加 `three` 类型入口。
+  - 生产构建验证通过（`npm run build`）。
+
 ## 2026-03-17（v2.7 - AI 配置迁移到后端代理）
 
 对应提交：`f98c27ea`、`f15fead1`、`592914b0`、`06ac528f`、`11928504`

@@ -1,8 +1,13 @@
-Put your GLB model here as lantern.glb
+Put your GLB model here.
 
-TODO: Replacement guide
-- Path: /public/models/lantern.glb
-- Suggested triangle count: < 50k (prefer < 20k)
-- Texture size: <= 1024x1024, 2-3 textures max
+Preferred filename:
+- /public/models/rolling-lantern.glb
+
+Compatible fallback filename:
+- /public/models/lantern.glb
+
+Suggested optimization:
+- Triangle count: < 50k (prefer < 20k)
+- Texture size: <= 1024x1024
 - Compression: Draco or meshopt recommended
-- Layers: name parts as parts/base, parts/handle, etc.
+- Clear hierarchy naming for parts

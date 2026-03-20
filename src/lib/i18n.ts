@@ -17,6 +17,7 @@ export const zh: Dict = {
   nav_aiqa: '智能问答',
   nav_resources: '课程资源',
   nav_feedback: '学习反馈',
+  nav_download_module: '模块下载',
 
   // Common
   enter: '进入',
@@ -50,6 +51,8 @@ export const zh: Dict = {
   module_resources_desc: '按学科下载课件、教案与课堂小软件',
   module_feedback_title: '课堂反馈与可视化',
   module_feedback_desc: '记录学习进度，查看数据分析',
+  module_download_title: '模块下载中心',
+  module_download_desc: '统一下载 Unity 安装包与开发复用包',
 
   // About Page
   about_title: '临平滚灯文化百科',
@@ -130,6 +133,7 @@ export const en: Dict = {
   nav_aiqa: 'AI Q&A',
   nav_resources: 'Resources',
   nav_feedback: 'Feedback',
+  nav_download_module: 'Module Downloads',
 
   // Common
   enter: 'Enter',
@@ -163,6 +167,8 @@ export const en: Dict = {
   module_resources_desc: 'Download subject-based slides, lesson plans and tools',
   module_feedback_title: 'Learning Analytics',
   module_feedback_desc: 'Track learning progress and view data analysis',
+  module_download_title: 'Module Download Center',
+  module_download_desc: 'Download Unity app packages and reusable bundles',
 
   // About Page
   about_title: 'Linping Rolling Lantern Encyclopedia',
