@@ -4,7 +4,7 @@
 
 ## 2026-03-20（v2.8 - WebAR 实装与 Unity 模块下载中心）
 
-对应提交：`待补充`
+对应提交：`fe339638`
 
 - WebAR 从占位模式升级为真实实现：
   - `src/components/ARViewer.tsx` 由 A-Frame CDN Mock 改为 Three.js + WebXR（`immersive-ar` + `hit-test`）。
