@@ -1,6 +1,43 @@
 # 变更记录（CHANGELOG）
 
-本文档按日期记录项目的重要变更。以下内容已与当前 Git 历史逐条对齐（截至 2026-03-16）。
+本文档按日期记录项目的重要变更。以下内容已与当前 Git 历史逐条对齐（截至 2026-04-02）。
+
+## 2026-04-02（v3.0 - 下载中心发布包补齐与 Android 教程化）
+
+对应提交：`a7c0d626`
+
+- 模块下载中心发布内容补齐：
+  - `public/downloads/` 新增并上线 3 个实际发布包：
+    - `rolling-lantern-ar-windows.zip`
+    - `rolling-lantern-module.unitypackage`
+    - `rolling-lantern-source.zip`
+- Android 下载策略调整：
+  - `src/pages/ModuleDownload.tsx` 将 Android 项由“直接下载 APK”改为“Android APK 生成教程”入口。
+  - 新增 `public/downloads/android-apk-guide.html`，说明如何利用现有 Unity 源工程与模块包自行导出 APK。
+- 配套文档同步：
+  - `public/downloads/README.txt` 改为说明“Windows ZIP + Unity 模块包 + 源工程 ZIP + Android 教程页”的发布结构。
+  - 新增 `Unity导出与发布教程.md`，整理 Unity 模型、Windows 包、模块包、源工程与 Android 导出流程。
+- 工程验证：
+  - 前端生产构建通过（`npm run build`）。
+
+## 2026-04-02（v3.1 - WebAR 程序生成滚灯与 3D 预览模式）
+
+对应提交：`82b0af84`
+
+- WebAR 生成能力增强：
+  - 新增 `src/lib/proceduralLantern.ts`，提供程序化滚灯几何、材质、配色与文灯/武灯结构生成能力。
+  - `src/components/ARViewer.tsx` 接入程序生成滚灯，默认可直接在网页端渲染滚灯，不再强依赖外部 `glb` 模型。
+- 预览与交互升级：
+  - 当设备不支持 `immersive-ar`、浏览器无法检测 WebXR，或未提供模型文件时，自动切换到 3D 预览模式。
+  - 新增文灯/武灯切换与大中小尺寸切换按钮，并保留旋转、缩放、配色切换与重置能力。
+  - 增加模型克隆与资源释放处理，减少切换样式/尺寸时的材质与几何残留。
+- 页面与展示细节优化：
+  - `src/pages/WebAR.tsx` 更新说明文案，明确当前支持“程序生成滚灯”与 `glb` 双路线。
+  - `src/components/Nav.tsx` 改进长导航与长用户名场景下的布局适配。
+  - `src/pages/H5Handbook.tsx` 将导入视频切换为首页同款视频资源与对应海报。
+  - `README.md` 补充 Unity 导出与发布教程入口。
+- 工程验证：
+  - 前端生产构建再次通过（`npm run build`）。
 
 ## 2026-03-20（v2.8 - WebAR 实装与 Unity 模块下载中心）
 
