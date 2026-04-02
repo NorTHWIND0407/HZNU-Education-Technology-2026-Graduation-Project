@@ -7,7 +7,7 @@ export default function WebAR() {
       <header>
         <h1 className="text-xl font-semibold">WebAR｜临平滚灯交互展示</h1>
         <p className="text-sm text-gray-500">
-          本页已接入 Three.js + WebXR 命中测试，可在支持设备上进行真实 AR 放置、旋转与自由缩放。
+          本页已接入 Three.js + WebXR 命中测试，默认可在网页端直接程序生成滚灯，并支持真实 AR 放置、旋转与自由缩放。
         </p>
       </header>
 
@@ -34,7 +34,7 @@ export default function WebAR() {
       </section>
 
       <aside className="text-xs text-gray-500">
-        模型文件请放入 `public/models/rolling-lantern.glb`（兼容 `public/models/lantern.glb`）。若未提供模型，页面会自动使用占位滚灯。
+        当前 WebAR 默认会直接程序生成滚灯；如需替换为更精细的静态模型，仍可放入 `public/models/rolling-lantern.glb`（兼容 `public/models/lantern.glb`），并将 `.env` 中 `VITE_AR_MODEL_SOURCE` 设为 `auto` 或 `glb`。
       </aside>
     </div>
   )

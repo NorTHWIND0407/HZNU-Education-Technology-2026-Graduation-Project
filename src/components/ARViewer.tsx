@@ -2,6 +2,13 @@ import React from 'react'
 import * as THREE from 'three'
 import { ARButton } from 'three/examples/jsm/webxr/ARButton.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import {
+  applyProceduralLanternPalette,
+  createProceduralLantern,
+  proceduralLanternPalettes,
+  type LanternScaleType,
+  type LanternStyleType,
+} from '../lib/proceduralLantern'
 
 type XRNavigator = Navigator & {
   xr?: {
@@ -9,23 +16,55 @@ type XRNavigator = Navigator & {
   }
 }
 
-const STYLE_PALETTES = [
-  { color: new THREE.Color(0xb71818), emissive: new THREE.Color(0x401010) },
-  { color: new THREE.Color(0x5f1111), emissive: new THREE.Color(0x1d0d0d) },
-  { color: new THREE.Color(0xc07d22), emissive: new THREE.Color(0x2f2210) },
-]
+const STYLE_PALETTES = proceduralLanternPalettes
+
+function cloneRenderableTemplate(source: THREE.Object3D) {
+  const clone = source.clone(true)
+  clone.traverse((obj: THREE.Object3D) => {
+    const mesh = obj as THREE.Mesh
+    if (!mesh.isMesh) return
+
+    mesh.geometry = mesh.geometry.clone()
+    if (!mesh.material) return
+
+    mesh.material = Array.isArray(mesh.material)
+      ? mesh.material.map(material => material.clone())
+      : mesh.material.clone()
+  })
+  return clone
+}
+
+function disposeRenderableObject(target: THREE.Object3D | null) {
+  if (!target) return
+
+  target.traverse((obj: THREE.Object3D) => {
+    const mesh = obj as THREE.Mesh
+    if (!mesh.isMesh) return
+
+    mesh.geometry?.dispose()
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    mats.forEach((material: THREE.Material) => material?.dispose())
+  })
+}
 
 export default function ARViewer() {
   const useAR = (import.meta.env.VITE_USE_AR ?? 'true') !== 'false'
+  const modelSource = String(import.meta.env.VITE_AR_MODEL_SOURCE ?? 'procedural').toLowerCase()
 
   const rootRef = React.useRef<HTMLDivElement | null>(null)
   const canvasHostRef = React.useRef<HTMLDivElement | null>(null)
   const arButtonHostRef = React.useRef<HTMLDivElement | null>(null)
   const styleActionRef = React.useRef<() => void>(() => undefined)
   const resetActionRef = React.useRef<() => void>(() => undefined)
+  const setProceduralStyleActionRef = React.useRef<(styleType: LanternStyleType) => void>(() => undefined)
+  const setProceduralScaleActionRef = React.useRef<(scaleType: LanternScaleType) => void>(() => undefined)
 
   const [status, setStatus] = React.useState('状态：初始化中...')
   const [controlsEnabled, setControlsEnabled] = React.useState(false)
+  const [proceduralControlsEnabled, setProceduralControlsEnabled] = React.useState(true)
+  const [selectedStyleType, setSelectedStyleType] = React.useState<LanternStyleType>('wen')
+  const [selectedScaleType, setSelectedScaleType] = React.useState<LanternScaleType>('large')
+  const [previewMode, setPreviewMode] = React.useState(false)
 
   React.useEffect(() => {
     if (!useAR) {
@@ -45,6 +84,7 @@ export default function ARViewer() {
     }
 
     const setSafeControls = (enabled: boolean) => {
+      controlsEnabledValue = enabled
       if (!disposed) setControlsEnabled(enabled)
     }
 
@@ -95,6 +135,61 @@ export default function ARViewer() {
     let lastPointerX = 0
     let pinchDistance = 0
     let styleIndex = 0
+    let proceduralStyleType: LanternStyleType = 'wen'
+    let proceduralScaleType: LanternScaleType = 'large'
+    let controlsEnabledValue = false
+    let proceduralControlsEnabledValue = true
+    let previewModeActive = false
+    let shouldAutoPlacePreview = false
+
+    const setSafePreviewMode = (enabled: boolean) => {
+      previewModeActive = enabled
+      if (!disposed) setPreviewMode(enabled)
+    }
+
+    setSafePreviewMode(false)
+
+    const replaceModelTemplate = (nextTemplate: THREE.Object3D) => {
+      nextTemplate.visible = false
+
+      if (modelTemplate) {
+        scene.remove(modelTemplate)
+        disposeRenderableObject(modelTemplate)
+      }
+
+      modelTemplate = nextTemplate
+      scene.add(nextTemplate)
+      proceduralControlsEnabledValue = nextTemplate.userData.lanternKind === 'procedural'
+      setProceduralControlsEnabled(proceduralControlsEnabledValue)
+    }
+
+    const replacePlacedModel = (nextModel: THREE.Object3D) => {
+      const previous = placedModel
+      if (previous) {
+        const prevPosition = previous.position.clone()
+        const prevQuaternion = previous.quaternion.clone()
+        const prevScale = previous.scale.clone()
+
+        scene.remove(previous)
+        disposeRenderableObject(previous)
+
+        placedModel = nextModel
+        placedModel.visible = true
+        placedModel.position.copy(prevPosition)
+        placedModel.quaternion.copy(prevQuaternion)
+        placedModel.scale.copy(prevScale)
+        scene.add(placedModel)
+        return
+      }
+
+      placedModel = nextModel
+    }
+
+    const attachPlacedModelToScene = () => {
+      if (placedModel && placedModel.parent !== scene) {
+        scene.add(placedModel)
+      }
+    }
 
     const setModelScale = (nextScale: number) => {
       if (!placedModel) return
@@ -104,7 +199,15 @@ export default function ARViewer() {
 
     const applyStyle = (index: number) => {
       if (!placedModel) return
+
+      if (placedModel.userData.lanternKind === 'procedural') {
+        applyProceduralLanternPalette(placedModel, index)
+        return
+      }
+
       const palette = STYLE_PALETTES[index % STYLE_PALETTES.length]
+      const fallbackColor = new THREE.Color(palette.frameColor)
+      const fallbackEmissive = fallbackColor.clone().multiplyScalar(0.16)
 
       placedModel.traverse((obj: THREE.Object3D) => {
         const mesh = obj as THREE.Mesh
@@ -113,77 +216,113 @@ export default function ARViewer() {
         const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
         mats.forEach((mat: THREE.Material) => {
           const standard = mat as THREE.MeshStandardMaterial
-          if (standard.color) standard.color.copy(palette.color)
-          if (standard.emissive) standard.emissive.copy(palette.emissive)
+          if (standard.color) standard.color.copy(fallbackColor)
+          if (standard.emissive) standard.emissive.copy(fallbackEmissive)
         })
       })
     }
 
-    const createFallbackLantern = () => {
-      const rootGroup = new THREE.Group()
+    const createRuntimeLantern = (styleType = proceduralStyleType, scaleType = proceduralScaleType) => {
+      const runtimeLantern = createProceduralLantern({
+        scaleType,
+        styleType,
+        coverType: 'cloth',
+        suspensionType: 'dualAxis',
+        lightType: 'led',
+        overallScale: 1,
+        arcSegments: 20,
+        chainWeight: styleType === 'wu' ? 24 : 0,
+      })
+      applyProceduralLanternPalette(runtimeLantern, styleIndex, styleType)
+      return runtimeLantern
+    }
 
-      const outer = new THREE.Mesh(
-        new THREE.SphereGeometry(0.18, 24, 24),
-        new THREE.MeshStandardMaterial({ color: 0xb71818, roughness: 0.52, metalness: 0.06 })
-      )
-      rootGroup.add(outer)
+    const rebuildProceduralLantern = (nextStyleType = proceduralStyleType, nextScaleType = proceduralScaleType) => {
+      proceduralStyleType = nextStyleType
+      proceduralScaleType = nextScaleType
+      setSelectedStyleType(nextStyleType)
+      setSelectedScaleType(nextScaleType)
 
-      const outerRing = new THREE.Mesh(
-        new THREE.TorusGeometry(0.28, 0.0045, 12, 100),
-        new THREE.MeshStandardMaterial({ color: 0xcfa955, roughness: 0.4, metalness: 0.34 })
-      )
-      outerRing.rotation.x = Math.PI / 2
-      rootGroup.add(outerRing)
+      const nextTemplate = createRuntimeLantern(nextStyleType, nextScaleType)
+      replaceModelTemplate(nextTemplate)
 
-      const lineMat = new THREE.MeshStandardMaterial({ color: 0xadb5bd, roughness: 0.26, metalness: 0.86 })
-      const topLine = new THREE.Mesh(new THREE.CylinderGeometry(0.0019, 0.0019, 0.22, 8), lineMat)
-      topLine.position.y = 0.2
-      rootGroup.add(topLine)
+      if (placedModel?.userData.lanternKind === 'procedural') {
+        const nextPlaced = cloneRenderableTemplate(nextTemplate)
+        nextPlaced.visible = true
+        replacePlacedModel(nextPlaced)
+        attachPlacedModelToScene()
+        setSafeStatus(`已切换为${nextScaleType === 'small' ? '小' : nextScaleType === 'medium' ? '中' : '大'}${nextStyleType === 'wen' ? '文灯' : '武灯'}`)
+      } else {
+        setSafeStatus(`下次放置将使用${nextScaleType === 'small' ? '小' : nextScaleType === 'medium' ? '中' : '大'}${nextStyleType === 'wen' ? '文灯' : '武灯'}`)
+      }
+    }
 
-      const bottomLine = topLine.clone()
-      bottomLine.position.y = -0.2
-      rootGroup.add(bottomLine)
+    const placePreviewModel = (reason?: string) => {
+      if (!modelTemplate) {
+        shouldAutoPlacePreview = true
+        if (reason) setSafeStatus(reason)
+        return
+      }
 
-      rootGroup.scale.setScalar(0.75)
-      return rootGroup
+      const nextModel = cloneRenderableTemplate(modelTemplate)
+      nextModel.visible = true
+      nextModel.position.set(0, -0.08, 0)
+      nextModel.rotation.set(0, Math.PI * 0.18, 0)
+      nextModel.scale.setScalar(0.72)
+      replacePlacedModel(nextModel)
+      attachPlacedModelToScene()
+
+      camera.position.set(0, 0.34, 1.85)
+      camera.lookAt(0, 0.05, 0)
+      reticle.visible = false
+      setSafeControls(true)
+      if (reason) setSafeStatus(reason)
+    }
+
+    const activatePreviewMode = (reason: string) => {
+      setSafePreviewMode(true)
+      placePreviewModel(reason)
     }
 
     const loadLanternTemplate = async () => {
-      const loader = new GLTFLoader()
-      const candidates = ['/models/rolling-lantern.glb', '/models/lantern.glb']
+      const shouldTryGlb = modelSource === 'auto' || modelSource === 'glb'
 
-      for (const path of candidates) {
-        try {
-          const gltf = await loader.loadAsync(path)
-          const loadedModel = gltf.scene
-          loadedModel.visible = false
-          scene.add(loadedModel)
-          modelTemplate = loadedModel
-          setSafeStatus('模型已加载，点击地面可放置')
-          return
-        } catch {
-          continue
+      if (shouldTryGlb) {
+        const loader = new GLTFLoader()
+        const candidates = ['/models/rolling-lantern.glb', '/models/lantern.glb']
+
+        for (const path of candidates) {
+          try {
+            const gltf = await loader.loadAsync(path)
+            const loadedModel = gltf.scene
+            replaceModelTemplate(loadedModel)
+            setSafeStatus('glb 模型已加载，点击地面可放置')
+            return
+          } catch {
+            continue
+          }
         }
       }
 
-      const fallbackModel = createFallbackLantern()
-      fallbackModel.visible = false
-      scene.add(fallbackModel)
-      modelTemplate = fallbackModel
-      setSafeStatus('未找到 glb，已启用占位滚灯')
+      const runtimeModel = createRuntimeLantern()
+      replaceModelTemplate(runtimeModel)
+      setSafeStatus(shouldTryGlb ? '未找到 glb，已切换为程序生成滚灯' : '已启用程序生成滚灯')
+
+      if (shouldAutoPlacePreview || previewModeActive) {
+        placePreviewModel(previewModeActive ? '当前设备不支持 AR，已切换为 3D 预览模式' : undefined)
+      }
     }
 
     const placeModelFromReticle = () => {
       if (!reticle.visible || !modelTemplate) return
 
-      if (placedModel) scene.remove(placedModel)
-
-      placedModel = modelTemplate.clone(true)
-      placedModel.visible = true
-      placedModel.matrix.copy(reticle.matrix)
-      placedModel.matrix.decompose(placedModel.position, placedModel.quaternion, placedModel.scale)
-      placedModel.scale.setScalar(0.75)
-      scene.add(placedModel)
+      const nextModel = cloneRenderableTemplate(modelTemplate)
+      nextModel.visible = true
+      nextModel.matrix.copy(reticle.matrix)
+      nextModel.matrix.decompose(nextModel.position, nextModel.quaternion, nextModel.scale)
+      nextModel.scale.setScalar(0.75)
+      replacePlacedModel(nextModel)
+      attachPlacedModelToScene()
 
       styleIndex = 0
       applyStyle(styleIndex)
@@ -224,11 +363,52 @@ export default function ARViewer() {
       applyStyle(styleIndex)
     }
 
+    setProceduralStyleActionRef.current = (nextStyleType: LanternStyleType) => {
+      if (!controlsEnabledValue && proceduralControlsEnabledValue) {
+        proceduralStyleType = nextStyleType
+        setSelectedStyleType(nextStyleType)
+        replaceModelTemplate(createRuntimeLantern(nextStyleType, proceduralScaleType))
+        setSafeStatus(`下次放置将使用${proceduralScaleType === 'small' ? '小' : proceduralScaleType === 'medium' ? '中' : '大'}${nextStyleType === 'wen' ? '文灯' : '武灯'}`)
+        return
+      }
+
+      if (!placedModel || placedModel.userData.lanternKind !== 'procedural') {
+        setSafeStatus('当前 glb 模式不支持文灯/武灯几何切换')
+        return
+      }
+
+      rebuildProceduralLantern(nextStyleType, proceduralScaleType)
+    }
+
+    setProceduralScaleActionRef.current = (nextScaleType: LanternScaleType) => {
+      if (!controlsEnabledValue && proceduralControlsEnabledValue) {
+        proceduralScaleType = nextScaleType
+        setSelectedScaleType(nextScaleType)
+        replaceModelTemplate(createRuntimeLantern(proceduralStyleType, nextScaleType))
+        setSafeStatus(`下次放置将使用${nextScaleType === 'small' ? '小' : nextScaleType === 'medium' ? '中' : '大'}${proceduralStyleType === 'wen' ? '文灯' : '武灯'}`)
+        return
+      }
+
+      if (!placedModel || placedModel.userData.lanternKind !== 'procedural') {
+        setSafeStatus('当前 glb 模式不支持尺寸几何切换')
+        return
+      }
+
+      rebuildProceduralLantern(proceduralStyleType, nextScaleType)
+    }
+
     resetActionRef.current = () => {
       if (placedModel) {
         scene.remove(placedModel)
+        disposeRenderableObject(placedModel)
         placedModel = null
       }
+
+      if (previewModeActive) {
+        placePreviewModel('已重置为 3D 预览默认视角')
+        return
+      }
+
       setSafeControls(false)
       setSafeStatus('已重置，请重新点击地面放置')
     }
@@ -326,14 +506,23 @@ export default function ARViewer() {
         .isSessionSupported('immersive-ar')
         .then((supported) => {
           if (!supported) {
-            setSafeStatus('当前设备或浏览器不支持 immersive-ar')
+            if (arButton instanceof HTMLElement) {
+              arButton.style.display = 'none'
+            }
+            activatePreviewMode('当前设备或浏览器不支持 immersive-ar，已切换为 3D 预览模式')
           }
         })
         .catch(() => {
-          setSafeStatus('无法检测 WebXR 支持状态')
+          if (arButton instanceof HTMLElement) {
+            arButton.style.display = 'none'
+          }
+          activatePreviewMode('无法检测 WebXR 支持状态，已切换为 3D 预览模式')
         })
     } else {
-      setSafeStatus('浏览器不支持 WebXR')
+      if (arButton instanceof HTMLElement) {
+        arButton.style.display = 'none'
+      }
+      activatePreviewMode('浏览器不支持 WebXR，已切换为 3D 预览模式')
     }
 
     renderer.xr.addEventListener('sessionstart', onSessionStart)
@@ -366,7 +555,9 @@ export default function ARViewer() {
       renderer.render(scene, camera)
     })
 
-    setSafeStatus('初始化完成，请点击“进入 AR”')
+    if (!previewModeActive) {
+      setSafeStatus('初始化完成，支持时可点击“进入 AR”')
+    }
     setSafeControls(false)
     void loadLanternTemplate()
 
@@ -375,6 +566,8 @@ export default function ARViewer() {
 
       styleActionRef.current = () => undefined
       resetActionRef.current = () => undefined
+      setProceduralStyleActionRef.current = () => undefined
+      setProceduralScaleActionRef.current = () => undefined
 
       renderer.setAnimationLoop(null)
       renderer.xr.removeEventListener('sessionstart', onSessionStart)
@@ -406,18 +599,11 @@ export default function ARViewer() {
       if (host.contains(renderer.domElement)) {
         host.removeChild(renderer.domElement)
       }
-
-      scene.traverse((obj: THREE.Object3D) => {
-        const mesh = obj as THREE.Mesh
-        if (!mesh.isMesh) return
-        mesh.geometry?.dispose()
-        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-        mats.forEach((mat: THREE.Material) => mat?.dispose())
-      })
+      disposeRenderableObject(scene)
 
       renderer.dispose()
     }
-  }, [useAR])
+  }, [modelSource, useAR])
 
   if (!useAR) {
     return (
@@ -437,14 +623,75 @@ export default function ARViewer() {
 
         <div className="pointer-events-none absolute inset-0 z-10">
           <section className="pointer-events-auto absolute left-3 top-3 w-[min(90vw,430px)] rounded-xl border border-white/20 bg-slate-950/68 p-3 text-white backdrop-blur">
-            <h2 className="text-sm font-semibold tracking-wide text-amber-300">滚灯 WebAR 交互</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold tracking-wide text-amber-300">滚灯 WebAR 交互</h2>
+              {previewMode ? (
+                <span className="rounded-full border border-sky-300/50 bg-sky-400/15 px-2 py-0.5 text-[11px] text-sky-100">
+                  3D 预览模式
+                </span>
+              ) : null}
+            </div>
             <p className="mt-1 text-xs leading-relaxed text-slate-100/90">
-              1. 点击“进入 AR”并允许摄像头权限。
-              2. 移动设备找到平面，出现蓝色圆环后点击屏幕放置滚灯。
-              3. 单指拖拽旋转，双指捏合或鼠标滚轮自由缩放。
+              {previewMode
+                ? '当前设备不支持标准 WebXR AR，已自动切换为 3D 预览。你仍可切换文灯/武灯、调整尺寸，并用拖拽和滚轮/双指继续查看滚灯。'
+                : '1. 点击“进入 AR”并允许摄像头权限。2. 移动设备找到平面，出现蓝色圆环后点击屏幕放置滚灯。3. 单指拖拽旋转，双指捏合或鼠标滚轮自由缩放。'}
             </p>
 
             <p className="mt-2 text-xs text-amber-100">{status}</p>
+
+            <div className="mt-3 space-y-2">
+              <div>
+                <p className="mb-1 text-[11px] uppercase tracking-[0.18em] text-slate-300/90">样式</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setProceduralStyleActionRef.current('wen')}
+                    disabled={!proceduralControlsEnabled}
+                    className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                      selectedStyleType === 'wen'
+                        ? 'border-amber-300 bg-amber-300/20 text-amber-100'
+                        : 'border-slate-400/50 bg-slate-800/90 text-white hover:bg-slate-700'
+                    } disabled:cursor-not-allowed disabled:opacity-40`}
+                  >
+                    文灯
+                  </button>
+                  <button
+                    onClick={() => setProceduralStyleActionRef.current('wu')}
+                    disabled={!proceduralControlsEnabled}
+                    className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                      selectedStyleType === 'wu'
+                        ? 'border-amber-300 bg-amber-300/20 text-amber-100'
+                        : 'border-slate-400/50 bg-slate-800/90 text-white hover:bg-slate-700'
+                    } disabled:cursor-not-allowed disabled:opacity-40`}
+                  >
+                    武灯
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-1 text-[11px] uppercase tracking-[0.18em] text-slate-300/90">尺寸</p>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ['small', '小'],
+                    ['medium', '中'],
+                    ['large', '大'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      onClick={() => setProceduralScaleActionRef.current(value)}
+                      disabled={!proceduralControlsEnabled}
+                      className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                        selectedScaleType === value
+                          ? 'border-amber-300 bg-amber-300/20 text-amber-100'
+                          : 'border-slate-400/50 bg-slate-800/90 text-white hover:bg-slate-700'
+                      } disabled:cursor-not-allowed disabled:opacity-40`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
               <button

@@ -2,7 +2,7 @@
 
 这是一个用于毕业设计展示的临平滚灯主题网站，包含前端展示、后端登录与反馈、以及可切换 Mock/真实接口的 AI 问答模块。项目内置占位素材和示例内容，先跑通系统，再逐步替换成你的真实教学资源即可。
 
-- 文档更新时间：2026-03-17
+- 文档更新时间：2026-04-02
 - 主要技术栈：Vite、React、TypeScript、TailwindCSS、Zustand、Recharts、A-Frame（WebAR）
 
 ## 文档索引
@@ -10,6 +10,7 @@
 - 项目总览：`README.md`（当前文件）
 - 本地运行与排障：`本地运行教程.md`
 - 部署与重启：`DEPLOY_MANUAL.md`
+- Unity 导出与发布：`Unity导出与发布教程.md`
 - Prompt 调整：`Prompt编辑指南.md`
 - 修改日志：`CHANGELOG.md`
 

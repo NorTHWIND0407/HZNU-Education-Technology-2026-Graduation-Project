@@ -36,11 +36,11 @@ export default function Nav() {
   return (
     <header className="sticky top-0 z-50 border-b-2 border-gold-200 dark:border-gold-800/30 bg-paper/95 dark:bg-paper-dark/95 backdrop-blur-md shadow-traditional">
       <div className="container-narrow">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex h-16 items-center gap-3 lg:gap-4">
           {/* Logo */}
           <Link
             to="/"
-            className="flex items-center gap-3 group"
+            className="flex shrink-0 items-center gap-3 group"
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-gold-500 flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
               <span className="text-white text-lg font-bold">灯</span>
@@ -56,26 +56,28 @@ export default function Nav() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map(item => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                    isActive
-                      ? 'bg-brand text-white shadow-md'
-                      : 'text-ink-700 dark:text-gray-300 hover:bg-gold-100 dark:hover:bg-gold-900/20'
-                  }`
-                }
-              >
-                {t(item.label, lang)}
-              </NavLink>
-            ))}
+          <nav className="hidden min-w-0 flex-1 lg:flex lg:justify-center">
+            <div className="flex min-w-0 items-center gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {navItems.map(item => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `shrink-0 whitespace-nowrap px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'bg-brand text-white shadow-md'
+                        : 'text-ink-700 dark:text-gray-300 hover:bg-gold-100 dark:hover:bg-gold-900/20'
+                    }`
+                  }
+                >
+                  {t(item.label, lang)}
+                </NavLink>
+              ))}
+            </div>
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {/* Language Toggle */}
             <button
               onClick={toggleLang}
@@ -110,15 +112,15 @@ export default function Nav() {
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gold-100 dark:hover:bg-gold-900/20 transition-colors"
+                  className="flex max-w-[13rem] items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-gold-100 dark:hover:bg-gold-900/20"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-gold-400 flex items-center justify-center text-white font-bold text-sm">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-gold-400 text-sm font-bold text-white">
                     {user.displayName[0]}
                   </div>
-                  <span className="hidden md:inline text-sm font-medium text-ink-800 dark:text-gray-200">
+                  <span className="hidden max-w-[8rem] truncate text-sm font-medium text-ink-800 dark:text-gray-200 md:inline">
                     {user.displayName}
                   </span>
-                  <svg className={`w-4 h-4 text-ink-600 dark:text-gray-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className={`h-4 w-4 shrink-0 text-ink-600 transition-transform dark:text-gray-400 ${userMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>

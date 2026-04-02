@@ -107,9 +107,7 @@ const handbookKeywords = [
 ]
 
 const introVideoSources: VideoSource[] = [
-  { label: '1080p', src: '/videos/placeholder_1080p.mp4' },
-  { label: '720p', src: '/videos/placeholder_720p.mp4' },
-  { label: '480p', src: '/videos/placeholder_480p.mp4' }
+  { label: '首页同款', src: '/videos/spring-festival-gala-2026-zhuma-tadeng.mp4' }
 ]
 
 const timelineItems: TimelineItem[] = [
@@ -773,7 +771,7 @@ export default function H5Handbook() {
                 <p className="text-sm text-ink-600 mb-4">
                   建议先播放 60-90 秒导入视频，呈现“灯会场景 + 动作特写 + 提问引导”。
                 </p>
-                <VideoPlayer sources={introVideoSources} poster="/images/handbook/handbook-intro-poster-01.png" />
+                <VideoPlayer sources={introVideoSources} poster="/images/临平滚灯上春晚.jpg" />
               </div>
               <div className="card p-4 md:p-5 text-sm">
                 <h3 className="font-semibold mb-2">观看任务</h3>
