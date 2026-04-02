@@ -9,16 +9,18 @@ type DownloadItem = {
   descZh: string
   descEn: string
   path: string
+  kind?: 'download' | 'guide'
 }
 
 const PROGRAM_ITEMS: DownloadItem[] = [
   {
-    id: 'android-apk',
-    titleZh: 'Android 安装包（APK）',
-    titleEn: 'Android Package (APK)',
-    descZh: '用于安卓设备安装 Unity 版滚灯应用。',
-    descEn: 'Installable Unity app package for Android devices.',
-    path: '/downloads/rolling-lantern-ar-android.apk',
+    id: 'android-guide',
+    titleZh: 'Android APK 生成教程',
+    titleEn: 'Android APK Export Guide',
+    descZh: '不直接提供 APK 下载，改为说明如何利用现有 Unity 源工程与模块包生成 APK。',
+    descEn: 'APK download is replaced by a guide that explains how to build it from the current Unity source package.',
+    path: '/downloads/android-apk-guide.html',
+    kind: 'guide',
   },
   {
     id: 'windows-zip',
@@ -94,6 +96,7 @@ export default function ModuleDownload() {
 
   const renderCard = (item: DownloadItem) => {
     const ready = readyMap[item.id]
+    const isGuide = item.kind === 'guide'
 
     return (
       <article key={item.id} className="card p-4 flex flex-col gap-3">
@@ -104,17 +107,22 @@ export default function ModuleDownload() {
           <p className="text-sm text-ink-600 dark:text-gray-400 mt-1">
             {lang === 'zh' ? item.descZh : item.descEn}
           </p>
-          <p className="text-xs text-ink-500 dark:text-gray-500 mt-2 font-mono">{item.path}</p>
         </div>
 
         <div className="flex items-center gap-2">
           {ready ? (
-            <a href={item.path} download className="btn">
-              {lang === 'zh' ? '下载文件' : 'Download'}
+            <a
+              href={item.path}
+              {...(isGuide ? { target: '_blank', rel: 'noreferrer' } : { download: true })}
+              className="btn"
+            >
+              {isGuide
+                ? (lang === 'zh' ? '查看教程' : 'Open Guide')
+                : (lang === 'zh' ? '下载文件' : 'Download')}
             </a>
           ) : (
             <button type="button" className="btn opacity-60 cursor-not-allowed" disabled>
-              {checking ? (lang === 'zh' ? '检测中...' : 'Checking...') : (lang === 'zh' ? '待上传' : 'Pending Upload')}
+              {checking ? (lang === 'zh' ? '检测中...' : 'Checking...') : (lang === 'zh' ? '暂不可用' : 'Unavailable')}
             </button>
           )}
 
@@ -125,7 +133,9 @@ export default function ModuleDownload() {
                 : 'border-amber-300 text-amber-700 bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:bg-amber-950/30'
             }`}
           >
-            {ready ? (lang === 'zh' ? '已就绪' : 'Ready') : (lang === 'zh' ? '未检测到文件' : 'Not Found')}
+            {ready
+              ? (isGuide ? (lang === 'zh' ? '可查看' : 'Ready') : (lang === 'zh' ? '可下载' : 'Ready'))
+              : (lang === 'zh' ? '暂不可用' : 'Unavailable')}
           </span>
         </div>
       </article>
@@ -140,8 +150,8 @@ export default function ModuleDownload() {
         </h1>
         <p className="text-sm text-ink-600 dark:text-gray-400 mt-2">
           {lang === 'zh'
-            ? '本页用于统一发布 Unity 程序包、开发复用包，以及 WebAR 在线入口，方便你在非遗网页项目中长期维护。'
-            : 'Publish Unity app packages, reusable dev bundles, and WebAR entry in one place for long-term maintenance.'}
+            ? '本页用于统一提供 WebAR 入口、Windows 安装包、Unity 开发复用包，以及 Android APK 导出教程。'
+            : 'Access WebAR, Windows package, Unity reusable bundles, and the Android APK export guide in one place.'}
         </p>
       </header>
 
@@ -165,7 +175,7 @@ export default function ModuleDownload() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-ink-900 dark:text-gray-100">
-          {lang === 'zh' ? 'Unity 可下载程序' : 'Downloadable Unity Apps'}
+          {lang === 'zh' ? 'Unity 发布程序与导出指引' : 'Unity Packages & Export Guide'}
         </h2>
         <div className="grid gap-3 md:grid-cols-2">{PROGRAM_ITEMS.map(renderCard)}</div>
       </section>
@@ -175,29 +185,6 @@ export default function ModuleDownload() {
           {lang === 'zh' ? 'Unity 开发复用包' : 'Unity Reusable Packages'}
         </h2>
         <div className="grid gap-3 md:grid-cols-2">{MODULE_ITEMS.map(renderCard)}</div>
-      </section>
-
-      <section className="card p-4 space-y-2">
-        <h2 className="font-semibold text-base text-ink-900 dark:text-gray-100">
-          {lang === 'zh' ? '你接下来要做的发布步骤' : 'Release Checklist'}
-        </h2>
-        <ol className="list-decimal pl-5 text-sm text-ink-600 dark:text-gray-400 space-y-1">
-          <li>
-            {lang === 'zh'
-              ? '在 Unity 导出 Android APK、Windows 构建、unitypackage、源工程 ZIP。'
-              : 'Export Android APK, Windows build, unitypackage, and source ZIP from Unity.'}
-          </li>
-          <li>
-            {lang === 'zh'
-              ? '将文件放入 /public/downloads（文件名可按本页默认命名）。'
-              : 'Put files into /public/downloads (you can follow the default names on this page).'}
-          </li>
-          <li>
-            {lang === 'zh'
-              ? '重新构建并部署网站，页面会自动检测文件并开放下载按钮。'
-              : 'Rebuild and deploy the site; this page auto-detects files and enables download buttons.'}
-          </li>
-        </ol>
       </section>
     </div>
   )

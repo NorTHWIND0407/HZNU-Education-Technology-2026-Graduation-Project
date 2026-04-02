@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Android APK 生成教程</title>
+    <style>
+      :root {
+        --bg: #f6f1e7;
+        --paper: rgba(255, 250, 241, 0.94);
+        --ink: #3d2d1f;
+        --muted: #6e5a47;
+        --brand: #a76f2d;
+        --line: rgba(92, 64, 34, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Noto Serif SC", "Source Han Serif SC", "PingFang SC", serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top right, rgba(212, 180, 120, 0.26), transparent 30%),
+          linear-gradient(180deg, #f4ecdf, #efe4d3);
+      }
+
+      .wrap {
+        width: min(960px, calc(100vw - 32px));
+        margin: 32px auto 48px;
+      }
+
+      .card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 26px 24px;
+        box-shadow: 0 16px 50px rgba(83, 55, 25, 0.08);
+      }
+
+      h1,
+      h2 {
+        margin: 0 0 12px;
+      }
+
+      h1 {
+        font-size: clamp(28px, 4vw, 40px);
+        color: var(--brand);
+      }
+
+      h2 {
+        margin-top: 26px;
+        font-size: 22px;
+      }
+
+      p,
+      li {
+        line-height: 1.8;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      ol,
+      ul {
+        margin: 10px 0 0 24px;
+        padding: 0;
+      }
+
+      code {
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: rgba(167, 111, 45, 0.08);
+        color: var(--ink);
+      }
+
+      .lead {
+        color: var(--ink);
+      }
+
+      .tip {
+        margin-top: 16px;
+        padding: 14px 16px;
+        border-left: 4px solid var(--brand);
+        border-radius: 12px;
+        background: rgba(167, 111, 45, 0.08);
+      }
+
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        text-decoration: none;
+        background: rgba(255, 255, 255, 0.7);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <h1>Android APK 生成教程</h1>
+        <p class="lead">
+          当前网页项目不再直接提供 Android 安装包下载，而是保留 3 个发布包，并通过本教程说明如何利用现有 Unity 资源自行生成 APK。
+        </p>
+
+        <div class="tip">
+          推荐优先使用 <code>rolling-lantern-source.zip</code>。如果只是想把滚灯模块导入到你自己的 Unity 项目中，可再配合
+          <code>rolling-lantern-module.unitypackage</code> 使用。
+        </div>
+
+        <h2>现有可用文件</h2>
+        <ul>
+          <li><code>rolling-lantern-ar-windows.zip</code>：Windows 展示包</li>
+          <li><code>rolling-lantern-module.unitypackage</code>：Unity 模块复用包</li>
+          <li><code>rolling-lantern-source.zip</code>：Unity 源工程压缩包</li>
+        </ul>
+
+        <h2>生成 APK 的推荐流程</h2>
+        <ol>
+          <li>先下载 <code>rolling-lantern-source.zip</code> 并解压。</li>
+          <li>使用 Unity Hub 打开源工程目录。</li>
+          <li>安装与工程匹配的 Unity 版本，以及 <code>Android Build Support</code>、<code>Android SDK &amp; NDK Tools</code>、<code>OpenJDK</code>。</li>
+          <li>在 Unity 中进入 <code>File &gt; Build Settings</code>，将平台切换到 <code>Android</code>。</li>
+          <li>在 <code>Player Settings</code> 中检查包名、版本号、最低 API、图标与权限。</li>
+          <li>确认场景已加入 <code>Scenes In Build</code>，并关闭 <code>Development Build</code>。</li>
+          <li>点击 <code>Build</code>，导出得到 APK 文件。</li>
+        </ol>
+
+        <h2>如果只拿到了 Unity 模块包怎么办</h2>
+        <ol>
+          <li>新建一个 Unity 工程。</li>
+          <li>通过 <code>Assets &gt; Import Package &gt; Custom Package</code> 导入 <code>rolling-lantern-module.unitypackage</code>。</li>
+          <li>自行补齐场景、AR 相机、AR Foundation 配置后，再按 Android 平台导出 APK。</li>
+        </ol>
+        <p>这条路线可行，但工作量通常比直接使用源工程更大。</p>
+
+        <h2>遇到常见报错时先检查</h2>
+        <ul>
+          <li><code>JDK not found</code>：到 Unity 的 <code>Preferences &gt; External Tools</code> 中启用 Unity 自带的 JDK、SDK、NDK。</li>
+          <li>切不到 Android 平台：去 Unity Hub 给当前编辑器补装 Android 模块。</li>
+          <li>AR 真机无法运行：检查 AR Foundation、ARCore 支持、包名和最低 Android 版本设置。</li>
+        </ul>
+
+        <div class="links">
+          <a class="link" href="/downloads/rolling-lantern-source.zip" download>下载 Unity 源工程</a>
+          <a class="link" href="/downloads/rolling-lantern-module.unitypackage" download>下载 Unity 模块包</a>
+          <a class="link" href="/module-download">返回模块下载中心</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
